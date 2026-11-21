@@ -90,6 +90,16 @@ function makeWorkbook(sheetDefs){
  const entries=[['[Content_Types].xml',types],['_rels/.rels',rels],['xl/workbook.xml',workbook],['xl/_rels/workbook.xml.rels',relationships],['xl/styles.xml',stylesXml()]];
  sheets.forEach((s,i)=>entries.push([`xl/worksheets/sheet${i+1}.xml`,sheetXml(s)]));return zipStored(entries);
 }
-function save(sheets,filename){const blob=makeWorkbook(sheets);const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+function save(sheets,filename){
+  const blob=makeWorkbook(sheets);
+  if(typeof URL==='undefined'||!URL.createObjectURL)throw Error('Этот браузер не может создать ссылку на Excel. Откройте сайт в современной версии Chrome или Edge.');
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;
+  a.style.display='none';document.body.append(a);
+  try{a.click();}finally{a.remove();}
+  // Return URL to the UI so the user can click a visible fallback link.
+  // Do not revoke after a short timer: the user might need more time.
+  return {url,filename,size:blob.size};
+}
 return {makeWorkbook,save,sheetXml,stylesXml};
 });

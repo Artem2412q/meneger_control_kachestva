@@ -9,3 +9,7 @@
 
 /* Excel-like formatting for exceeded maximum stock. */
 #stockTable td.overmax,#criticalTable td.overmax{background:#ff2424!important;color:#090909!important;font-weight:650}
+
+[hidden]{display:none!important}
+a.secondary-button{text-decoration:none}
+#stockExportHint{color:#64748b;line-height:1.65}

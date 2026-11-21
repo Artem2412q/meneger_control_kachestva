@@ -7,7 +7,6 @@
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
   <link rel="stylesheet" href="assets/styles.css">
-  <script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script defer src="assets/core.js"></script>
   <script defer src="assets/etalon.js"></script>
   <script defer src="assets/export.js"></script>
@@ -30,7 +29,7 @@
       <div class="sidebar-bottom"><div class="privacy-mark">● <span>Локальная обработка</span></div><p>Данные Excel остаются в вашем браузере. Сайт не отправляет файлы на сервер.</p></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Рабочая версия 2.2 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Рабочая версия 2.3 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -57,7 +56,7 @@
             <div class="panel"><div class="panel-title"><div class="step">2</div><div><h2>Параметры отчёта</h2><p>Настройте дату и список товаров после загрузки.</p></div></div>
               <div class="form-grid"><label class="field">Дата отчёта<input type="date" id="reportDate"></label><label class="field">Состав отчёта<select id="reportMode"><option value="etalon" selected>Эталон — все товарные позиции</option><option value="reference">По списку из образца</option><option value="fresh">Овощи и фрукты (по признакам)</option><option value="all">Все товары</option><option value="flowers">Код цветы (по справочнику)</option></select></label></div>
               <div id="dateInfo" class="field-note">Дата автоматически определяется по столбцу «Дата операции».</div>
-              <div class="button-row"><button class="primary-button" id="exportStock" disabled>Скачать готовый отчёт Excel <span>↓</span></button><button class="secondary-button" id="previewStock" disabled>Обновить расчёт</button></div>
+              <div class="button-row"><button class="primary-button" id="exportStock" disabled>Скачать готовый отчёт Excel <span>↓</span></button><button class="secondary-button" id="previewStock" disabled>Обновить расчёт</button></div><p class="field-note" id="stockExportHint" role="status">Чтобы скачать Excel, сначала загрузите два файла, затем выполните проверку и подключите НТЗ.</p><div class="button-row"><a class="secondary-button" id="stockDownloadLink" hidden>Если скачивание не началось — нажмите сюда ↓</a><button class="secondary-button" id="testDownload" type="button">Проверить скачивание (тест Excel)</button></div>
             </div>
             <div class="panel preview-panel" id="reportPreviewPanel" hidden><div class="panel-title flat"><div><h2>Предпросмотр результата</h2><p id="previewSubtitle">Первые строки сформированного отчёта</p></div><input type="search" class="search-box" id="stockSearch" placeholder="Поиск по коду или названию"></div><div class="metrics" id="stockMetrics"></div><div class="table-scroll"><table class="data-table" id="stockTable"><thead></thead><tbody></tbody></table></div><div class="table-footer" id="stockFooter"></div></div>
           </div>
@@ -89,7 +88,7 @@
               <label class="file-drop" id="criticalServiceZone" for="criticalServiceFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Критика — уровень сервиса</strong><small>rpt_levelservice_api.level_service_hd_gk_eday_hm.xlsx</small><em id="criticalServiceStatus">Выбрать отдельный файл на сегодня</em></span><span class="file-action">Выбрать</span><input type="file" id="criticalServiceFile" accept=".xlsx" hidden></label>
             </div>
             <p class="field-note">Дата критики: <strong id="todayDateLabel">определяется браузером</strong>. При отсутствии сегодняшней даты в уровне сервиса генерация блокируется. В сальдовой ведомости отдельного поля даты нет — проверьте её выгрузку.</p>
-            <div class="button-row"><button class="primary-button" id="processCritical" disabled>Проверить критику за сегодня <span>→</span></button><button class="secondary-button" id="exportCritical" disabled>Скачать критику Excel ↓</button></div>
+            <div class="button-row"><button class="primary-button" id="processCritical" disabled>Проверить критику за сегодня <span>→</span></button><button class="secondary-button" id="exportCritical" disabled>Скачать критику Excel ↓</button></div><p class="field-note" id="criticalExportHint">Для выгрузки нужны два сегодняшних файла и загруженный НТЗ.</p><div class="button-row"><a class="secondary-button" id="criticalDownloadLink" hidden>Повторить скачивание Критики ↓</a></div>
           </div>
           <div class="panel" id="criticalPanel" hidden><div class="panel-title flat"><div><h2>Критика</h2><p id="criticalSummary">Предпросмотр</p></div></div><div class="metrics" id="criticalMetrics"></div><div class="table-scroll"><table class="data-table" id="criticalTable"><thead></thead><tbody></tbody></table></div></div>
           <div class="info-row"><div class="info-symbol">ⓘ</div><p>Для обеих категорий используется общий справочник НТЗ. При скачивании основного отчёта подготовленная за сегодня критика включается в отдельный лист. Отсутствующие нормативы отмечаются и перечисляются в листе «Контроль».</p></div>
@@ -98,7 +97,7 @@
         <section class="view" id="view-returns">
           <div class="eyebrow">КАТЕГОРИЯ / 02</div><div class="page-title"><div><h1>Отчёт возвраты ГТ</h1><p>Рабочий реестр возвратов Гранд-Трейд с поиском по всем полям.</p></div><span class="status-chip">Excel-реестр</span></div>
           <div class="panel"><div class="panel-title"><div class="step">1</div><div><h2>Загрузите реестр</h2><p>Поддерживаются Excel .xlsx и .xls, проверяется структура таблицы возвратов.</p></div></div><label class="file-drop" id="gtZone" for="gtFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Отчёт возвраты ГТ</strong><small>Дата приёмки, код ТП, претензия, объём, статус</small><em id="gtStatus">Нажмите или перетащите файл</em></span><span class="file-action">Выбрать</span><input type="file" id="gtFile" accept=".xlsx,.xls" hidden></label></div>
-          <div class="panel" id="gtPreviewPanel" hidden><div class="panel-title flat"><div><h2>Реестр возвратов</h2><p id="gtRowCount">0 записей</p></div><input type="search" id="gtSearch" class="search-box" placeholder="Поиск по товару, заявке, машине..."></div><div class="table-scroll"><table class="data-table" id="gtTable"><thead></thead><tbody></tbody></table></div><div class="button-row"><button class="primary-button" id="exportGT">Скачать результат поиска <span>↓</span></button><span class="muted">Исходная таблица не изменяется</span></div></div>
+          <div class="panel" id="gtPreviewPanel" hidden><div class="panel-title flat"><div><h2>Реестр возвратов</h2><p id="gtRowCount">0 записей</p></div><input type="search" id="gtSearch" class="search-box" placeholder="Поиск по товару, заявке, машине..."></div><div class="table-scroll"><table class="data-table" id="gtTable"><thead></thead><tbody></tbody></table></div><div class="button-row"><button class="primary-button" id="exportGT">Скачать результат поиска <span>↓</span></button><span class="muted">Исходная таблица не изменяется</span></div><div class="button-row"><a class="secondary-button" id="gtDownloadLink" hidden>Повторить скачивание возвратов ↓</a></div></div>
         </section>
 
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>

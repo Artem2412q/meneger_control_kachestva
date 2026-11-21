@@ -13,6 +13,28 @@
   const decimalNumber = n => Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
   const percentNumber = n => Number(n).toLocaleString('ru-RU',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2});
   let toastTimeout;
+  const downloadUrls=Object.create(null);
+  function keepDownloadLink(id,download){
+    const anchor=$(id);if(!anchor||!download)return;
+    if(downloadUrls[id])URL.revokeObjectURL(downloadUrls[id]);
+    downloadUrls[id]=download.url;
+    anchor.href=download.url;
+    anchor.download=download.filename;
+    anchor.hidden=false;
+    anchor.setAttribute('aria-label',`Скачать файл ${download.filename} повторно`);
+  }
+  function resetDownloadLink(id){
+    const anchor=$(id);if(anchor)anchor.hidden=true;
+    if(downloadUrls[id]){URL.revokeObjectURL(downloadUrls[id]);delete downloadUrls[id];}
+  }
+  function updateExportHint(){
+    const node=$('stockExportHint');if(!node)return;
+    if(!state.files.saldo||!state.files.service)node.textContent='Шаг 1: выберите обе исходные таблицы Excel.';
+    else if(!state.sources)node.textContent='Шаг 2: нажмите «Проверить и объединить файлы» и дождитесь окончания обработки.';
+    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Шаг 3: в правом блоке «Нормативы НК / КК» загрузите образец с листом «НТЗ». Без него скачивание заблокировано — нормативы нельзя выдумывать.';
+    else if(!state.report?.records?.length)node.textContent='Проверьте дату отчёта и состав товарных позиций: пока нет строк для выгрузки.';
+    else node.textContent='Отчёт готов. Нажмите «Скачать готовый отчёт Excel». Если браузер блокирует загрузку — появится резервная ссылка.';
+  }
 
   function toast(message, error=false) {
     const node=$('toast');node.textContent=message;node.hidden=false;node.classList.toggle('error',error);
@@ -52,7 +74,7 @@
   }
   function invalidateStock() {
     state.sources=null;state.report=null;$('exportStock').disabled=true;$('previewStock').disabled=true;
-    $('reportPreviewPanel').hidden=true;updateChecks();
+    $('reportPreviewPanel').hidden=true;resetDownloadLink('stockDownloadLink');updateChecks();updateExportHint();
   }
   function setFile(kind,file) {
     if(!file)return;
@@ -90,7 +112,7 @@
         done=true;worker.terminate();
         if(msg.type==='error')reject(new Error(msg.message));else resolve(msg.payload);
       };
-      worker.onerror=e=>{if(done)return;done=true;worker.terminate();reject(new Error('Не удалось загрузить библиотеку обработки Excel. Проверьте доступ к интернету.'));};
+      worker.onerror=e=>{if(done)return;done=true;worker.terminate();reject(new Error('Не удалось запустить обработку XLSX. Откройте сайт через GitHub Pages (не файлом index.html) и обновите Chrome/Edge.'));};
       const transfers=[];
       for(const key of ['saldo','service','buffer'])if(data[key] instanceof ArrayBuffer)transfers.push(data[key]);
       worker.postMessage({action,...data},transfers);
@@ -130,6 +152,7 @@
     try{state.report=Core.buildReport(payload,{date,mode:$('reportMode').value});}
     catch(error){state.report=null;$('exportStock').disabled=true;$('reportPreviewPanel').hidden=true;return toast(error.message,true);}
     $('exportStock').disabled=!state.report.records.length||!state.template;
+    resetDownloadLink('stockDownloadLink');updateExportHint();
     $('reportPreviewPanel').hidden=false;
     $('previewSubtitle').textContent=`${state.report.records.length} позиций · ${date} · режим «${modeLabel(state.report.stats.appliedMode)}»`;
     renderStockTable();updateChecks();
@@ -223,10 +246,6 @@
   });
   updateEtalonUI();
 
-  function downloadWorkbook(book,filename) {
-    if(typeof XLSX==='undefined')throw new Error('Библиотека Excel не загружена. Подключитесь к интернету и обновите страницу.');
-    XLSX.writeFile(book,filename,{bookType:'xlsx',compression:true});
-  }
   function exportStock() {
     if(!state.report)return toast('Сначала выполните расчёт.',true);
     if(!state.template)return toast('Сначала загрузите справочник НТЗ.',true);
@@ -234,11 +253,19 @@
       const critical=state.criticalReport?.date===Core.toRuDate(Core.todayIso())?state.criticalReport:null;
       const sheets=window.MagnitReport.prepareSheets({stock:state.report,critical,
         stockSources:state.sources,template:state.template,etalon:state.etalon,snapshot:$('normSnapshot').value});
-      window.MagnitExcel.save(sheets,`Отчёт по товарному запасу ${state.report.date}.xlsx`);
-      toast(`Готовый Excel: все ТП из Эталона, сверка, НТЗ, архив, цветы и контроль${critical?', Критика':''}.`);
+      const downloaded=window.MagnitExcel.save(sheets,`MAGNIT_TZ_${state.report.date.replaceAll('.','-')}.xlsx`);
+      keepDownloadLink('stockDownloadLink',downloaded);
+      toast('Excel сформирован. Если файл не скачался автоматически, нажмите резервную ссылку под кнопкой.');
     }catch(e){toast(e.message,true);}
   }
   $('exportStock').addEventListener('click',exportStock);
+  $('testDownload').addEventListener('click',()=>{
+    try{
+      const file=window.MagnitExcel.save([{name:'Тест',headers:['Проверка','Результат'],rows:[['Скачивание Excel','Работает']],widths:[30,28]}],'MAGNIT_TEST_DOWNLOAD.xlsx');
+      keepDownloadLink('stockDownloadLink',file);
+      toast('Тестовый Excel создан. Если автоматическое скачивание не началось — нажмите резервную ссылку.');
+    }catch(e){toast(`Ошибка тестовой выгрузки: ${e.message}`,true);}
+  });
 
   function updateTemplateStatus() {
     const template=state.template;
@@ -253,7 +280,7 @@
     select.disabled=!present;
     $('templateStatus').textContent=present?`НТЗ: ${Object.keys(template.norms).length} норм · ${template.catalog.length} кодов образца · цветов: ${template.flowerCodes?.length||0}`:'Справочник ещё не загружен';
     $('archiveInfo').textContent=present?`Архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Выбранный срез полностью включается в итоговый Excel.`:'Архив НТЗ будет доступен после импорта образца.';
-    $('clearTemplate').hidden=!present;updateChecks();
+    $('clearTemplate').hidden=!present;updateChecks();updateExportHint();
   }
   $('normSnapshot').addEventListener('change',()=>{if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();updateChecks();});
   try {
@@ -277,7 +304,7 @@
     state.template=null;
     try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
     updateTemplateStatus();if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();
-    $('exportStock').disabled=true;$('exportCritical').disabled=true;
+    $('exportStock').disabled=true;$('exportCritical').disabled=true;updateExportHint();
     toast('Локальный справочник очищен.');
   });
 
@@ -290,7 +317,7 @@
       !validateName(state.files.criticalService,criticalName('criticalService'));
   }
   function invalidateCritical(){
-    state.criticalSources=null;state.criticalReport=null;
+    state.criticalSources=null;state.criticalReport=null;resetDownloadLink('criticalDownloadLink');
     $('exportCritical').disabled=true;$('criticalPanel').hidden=true;updateCriticalButton();
   }
   function setCriticalFile(kind,file){
@@ -322,6 +349,8 @@
       catalog:state.template?.catalog||[]};
     state.criticalReport=Core.buildCriticalReport(payload,{today:Core.todayIso(),mode:'fresh'});
     $('exportCritical').disabled=!state.template||!state.criticalReport.records.length;
+    resetDownloadLink('criticalDownloadLink');
+    $('criticalExportHint').textContent=state.template?'Критика готова к экспорту.':'Для выгрузки Критики необходимо подключить НТЗ.';
     $('criticalPanel').hidden=false;
     const {stats,records}=state.criticalReport;
     $('criticalSummary').textContent=`Сегодня ${date} · ${records.length} товаров (отбор овощи/фрукты — предварительный)`;
@@ -357,8 +386,9 @@
     if(!state.criticalReport||state.criticalReport.date!==criticalToday())return toast('Критика устарела. Загрузите текущие выгрузки.',true);
     try{
       const sheets=window.MagnitReport.prepareSheets({critical:state.criticalReport,template:state.template,etalon:state.etalon,snapshot:$('normSnapshot').value});
-      window.MagnitExcel.save(sheets,`Критика ${state.criticalReport.date}.xlsx`);
-      toast('Критика выгружена с нормативами НТЗ и архивом.');
+      const downloaded=window.MagnitExcel.save(sheets,`MAGNIT_KRITIKA_${state.criticalReport.date.replaceAll('.','-')}.xlsx`);
+      keepDownloadLink('criticalDownloadLink',downloaded);
+      toast('Критика сформирована. Резервная ссылка для скачивания появилась ниже.');
     }catch(e){toast(e.message,true);}
   });
 
@@ -391,18 +421,10 @@
   $('exportGT').addEventListener('click',()=>{
     if(!state.gt)return;
     try {
-      const book=XLSX.utils.book_new();const rows=[state.gt.headers,...getFilteredGT()];
-      const ws=XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols']=state.gt.headers.map(h=>({wch:Math.min(54,Math.max(17,h.length+4))}));
-      for(let c=0;c<state.gt.headers.length;c++)if(/дата/i.test(state.gt.headers[c])){
-        for(let r=1;r<rows.length;r++){
-          const addr=XLSX.utils.encode_cell({r,c});
-          if(ws[addr]?.t==='n'&&ws[addr].v>=20000&&ws[addr].v<=80000)ws[addr].z='dd.mm.yyyy';
-        }
-      }
-      ws['!autofilter']={ref:`A1:${XLSX.utils.encode_cell({r:Math.max(0,rows.length-1),c:Math.max(0,state.gt.headers.length-1)})}`};
-      XLSX.utils.book_append_sheet(book,ws,'Возвраты ГТ');downloadWorkbook(book,'Возвраты ГТ - выборка.xlsx');
-      toast('Сформирован Excel с отфильтрованными строками.');
+      const widths=state.gt.headers.map(h=>Math.min(54,Math.max(17,h.length+4)));
+      const downloaded=window.MagnitExcel.save([{name:'Возвраты ГТ',headers:state.gt.headers,rows:getFilteredGT(),widths}], 'MAGNIT_VOZVRATY_GT.xlsx');
+      keepDownloadLink('gtDownloadLink',downloaded);
+      toast('Excel с отфильтрованными строками готов. Ниже есть резервная ссылка.');
     }catch(e){toast(e.message,true);}
   });
 })();
