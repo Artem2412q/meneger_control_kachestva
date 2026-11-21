@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#b91825">
+  <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
+  <title>МАГНИТ РЦ — центр отчётности</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script defer src="assets/core.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Главное меню">
+      <div class="brand"><div class="brand-icon" aria-hidden="true">М</div><div><strong>МАГНИТ <span>РЦ</span></strong><small>Центр автоматизации</small></div></div>
+      <div class="sidebar-heading">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+      <nav class="navigation" aria-label="Разделы">
+        <button class="nav-button active" data-tab="home" aria-current="page"><span class="nav-glyph">▦</span> Обзор</button>
+        <button class="nav-button" data-tab="stock"><span class="nav-glyph">▤</span> Товарный запас <span class="nav-pill">01</span></button>
+        <button class="nav-button" data-tab="returns"><span class="nav-glyph">⇄</span> Возвраты ГТ</button>
+        <button class="nav-button" data-tab="rules"><span class="nav-glyph">⌘</span> Правила и справка</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="privacy-mark">● <span>Локальная обработка</span></div><p>Данные Excel остаются в вашем браузере. Сайт не отправляет файлы на сервер.</p></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Рабочая версия 1.0 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <main class="main">
+        <section class="view active" id="view-home">
+          <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
+          <div class="hero"><div><h1>Отчётность без ручной рутины.</h1><p>Единое пространство для ежедневных Excel-файлов, контрольных проверок и готовых отчётов.</p><button class="primary-button" data-go="stock">Сформировать товарный запас <span>→</span></button></div><div class="hero-illustration" aria-hidden="true"><div class="sheet-picture"><div class="sheet-bar"></div><div class="sheet-rows"><i></i><i></i><i></i><i></i></div><div class="sheet-badge">✓</div></div></div></div>
+          <div class="section-caption"><h2>Категории отчётности</h2><span>Рабочие разделы</span></div>
+          <div class="feature-grid">
+            <button class="feature-card" data-go="stock"><div class="feature-icon stock-icon">▤</div><h3>Товарный запас</h3><p>Загрузка двух Excel, объединение по коду товара, расчёт УС и товарного запаса в днях.</p><div class="feature-footer"><span class="tag">Автоматизация</span><span class="arrow">↗</span></div></button>
+            <button class="feature-card" data-go="returns"><div class="feature-icon gt-icon">⇄</div><h3>Возвраты ГТ</h3><p>Просмотр и поиск по реестру возвратов Гранд-Трейд, выгрузка отфильтрованных записей.</p><div class="feature-footer"><span class="tag neutral">Реестр</span><span class="arrow">↗</span></div></button>
+          </div>
+          <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Как работает:</strong> файлы обрабатываются в браузере. Для точного отчёта по нормативам НК/КК один раз загрузите образец с листом «НТЗ». Его справочник сохранится только в этом браузере.</p></div>
+        </section>
+
+        <section class="view" id="view-stock">
+          <div class="eyebrow">КАТЕГОРИЯ / 01</div><div class="page-title"><div><h1>Отчёт по товарному запасу</h1><p>Ежедневный расчёт на основе двух обязательных документов Excel.</p></div><span class="status-chip">2 файла ежедневно</span></div>
+          <div class="content-grid"><div class="content-main">
+            <div class="panel"><div class="panel-title"><div class="step">1</div><div><h2>Загрузите исходные файлы</h2><p>Проверяются имя файла, формат и обязательные столбцы.</p></div></div>
+              <div class="file-list">
+                <label class="file-drop" id="saldoZone" for="saldoFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Сальдово-оборотная ведомость</strong><small>rep_turnover_saldo_for_logist_excel.xlsx</small><em id="saldoStatus">Нажмите или перетащите файл</em></span><span class="file-action">Выбрать</span><input type="file" id="saldoFile" accept=".xlsx" hidden></label>
+                <label class="file-drop" id="serviceZone" for="serviceFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Уровень сервиса по товарным позициям</strong><small>rpt_levelservice_api.level_service_hd_gk_eday_hm.xlsx</small><em id="serviceStatus">Нажмите или перетащите файл</em></span><span class="file-action">Выбрать</span><input type="file" id="serviceFile" accept=".xlsx" hidden></label>
+              </div>
+              <div class="button-row"><button class="primary-button" id="processStock" disabled>Проверить и объединить файлы <span>→</span></button><span class="muted">Все вычисления выполняются локально</span></div>
+            </div>
+            <div class="panel"><div class="panel-title"><div class="step">2</div><div><h2>Параметры отчёта</h2><p>Настройте дату и список товаров после загрузки.</p></div></div>
+              <div class="form-grid"><label class="field">Дата отчёта<input type="date" id="reportDate"></label><label class="field">Состав отчёта<select id="reportMode"><option value="reference">По списку из образца</option><option value="fresh">Овощи и фрукты (по признакам)</option><option value="all">Все товары</option></select></label></div>
+              <div id="dateInfo" class="field-note">Дата автоматически определяется по столбцу «Дата операции».</div>
+              <div class="button-row"><button class="primary-button" id="exportStock" disabled>Скачать готовый отчёт Excel <span>↓</span></button><button class="secondary-button" id="previewStock" disabled>Обновить расчёт</button></div>
+            </div>
+            <div class="panel preview-panel" id="reportPreviewPanel" hidden><div class="panel-title flat"><div><h2>Предпросмотр результата</h2><p id="previewSubtitle">Первые строки сформированного отчёта</p></div><input type="search" class="search-box" id="stockSearch" placeholder="Поиск по коду или названию"></div><div class="metrics" id="stockMetrics"></div><div class="table-scroll"><table class="data-table" id="stockTable"><thead></thead><tbody></tbody></table></div><div class="table-footer" id="stockFooter"></div></div>
+          </div>
+          <aside class="content-aside"><div class="side-panel"><div class="side-icon">◎</div><h3>Нормативы НК / КК</h3><p>В двух ежедневных файлах нормативов нет. Импортируйте исходный ноябрьский отчёт с листом «НТЗ» один раз.</p><label class="secondary-button full-width file-trigger" for="templateFile">Загрузить образец .xls / .xlsx<input id="templateFile" type="file" accept=".xls,.xlsx" hidden></label><p class="aside-status" id="templateStatus">Справочник ещё не загружен</p><button class="text-button" id="clearTemplate" hidden>Удалить локальный справочник</button></div>
+            <div class="side-panel soft-panel"><h3>Проверки перед выгрузкой</h3><div class="check-line" id="checkNames"><span class="check-indicator">○</span> Точные имена файлов</div><div class="check-line" id="checkHeaders"><span class="check-indicator">○</span> Проверка столбцов</div><div class="check-line" id="checkDate"><span class="check-indicator">○</span> Дата уровня сервиса</div><div class="check-line" id="checkNorms"><span class="check-indicator">○</span> Нормативы НК / КК</div></div>
+            <div class="side-panel minimal"><h3>Важно</h3><p>Образец содержит дополнительную бизнес-логику выбора позиций. Пока режим «По списку из образца» использует коды последнего датированного листа, а «Овощи и фрукты» — признаки исходных выгрузок. Эти правила можно уточнять.</p></div>
+          </aside></div>
+        </section>
+
+        <section class="view" id="view-returns">
+          <div class="eyebrow">КАТЕГОРИЯ / 02</div><div class="page-title"><div><h1>Отчёт возвраты ГТ</h1><p>Рабочий реестр возвратов Гранд-Трейд с поиском по всем полям.</p></div><span class="status-chip">Excel-реестр</span></div>
+          <div class="panel"><div class="panel-title"><div class="step">1</div><div><h2>Загрузите реестр</h2><p>Поддерживаются Excel .xlsx и .xls, проверяется структура таблицы возвратов.</p></div></div><label class="file-drop" id="gtZone" for="gtFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Отчёт возвраты ГТ</strong><small>Дата приёмки, код ТП, претензия, объём, статус</small><em id="gtStatus">Нажмите или перетащите файл</em></span><span class="file-action">Выбрать</span><input type="file" id="gtFile" accept=".xlsx,.xls" hidden></label></div>
+          <div class="panel" id="gtPreviewPanel" hidden><div class="panel-title flat"><div><h2>Реестр возвратов</h2><p id="gtRowCount">0 записей</p></div><input type="search" id="gtSearch" class="search-box" placeholder="Поиск по товару, заявке, машине..."></div><div class="table-scroll"><table class="data-table" id="gtTable"><thead></thead><tbody></tbody></table></div><div class="button-row"><button class="primary-button" id="exportGT">Скачать результат поиска <span>↓</span></button><span class="muted">Исходная таблица не изменяется</span></div></div>
+        </section>
+
+        <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>
+          <div class="panel"><h2 class="rules-heading">Откуда берутся данные</h2><div class="rule-map"><div><span class="rule-number">01</span><strong>Сальдово-оборотная ведомость</strong><p>Код товара, название, начальное и конечное количество.</p></div><span class="map-separator">+</span><div><span class="rule-number">02</span><strong>Уровень сервиса</strong><p>Заказ, импорт, отгрузка, Vicherk, дата операции, тип отбора.</p></div><span class="map-separator">→</span><div><span class="rule-number">03</span><strong>Итоговый Excel</strong><p>Объединение по коду товара, расчёт УС, ТЗ в днях и отклонений.</p></div></div>
+            <div class="formula-list"><div><strong>УС к заказу</strong><code>Отгрузка ÷ Заказ</code></div><div><strong>УС к импорту</strong><code>Отгрузка ÷ Импорт</code></div><div><strong>Фактический ТЗ, дни</strong><code>Конечное количество ÷ Отгрузка</code></div><div><strong>ТЗ / Заказ</strong><code>Конечное количество ÷ Заказ</code></div><div><strong>Целевой ТЗ Комментарии</strong><code>Фактический ТЗ − НК</code></div><div><strong>Максимальный ТЗ Комментарии</strong><code>Фактический ТЗ − КК</code></div></div>
+            <p class="rule-note">Если знаменатель равен нулю, в числовых коэффициентах используется 0. Если «Заказ» равен 0, в колонках комментариев — «Без расхода». При отсутствии справочника НТЗ нормативы остаются пустыми и отображается предупреждение.</p>
+          </div><div class="info-row"><div class="info-symbol">🔒</div><p>GitHub Pages публикует сам сайт, но не загруженные в браузер Excel-файлы. Не добавляйте коммерческие выгрузки в репозиторий. Загруженный справочник сохраняется в локальном хранилище браузера и доступен только в нём.</p></div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
