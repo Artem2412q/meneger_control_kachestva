@@ -4,9 +4,11 @@
   const $ = id => document.getElementById(id);
   const state = {
     files: {saldo:null, service:null, gt:null,criticalSaldo:null,criticalService:null},
-    sources:null, template:null, report:null, gt:null,criticalSources:null,criticalReport:null
+    sources:null, template:null, report:null, gt:null,criticalSources:null,criticalReport:null,
+    etalon:window.MagnitEtalon||null
   };
   const STORAGE_KEY = 'magnit-rc-v2-reference';
+  const ETALON_STORAGE_KEY = 'magnit-rc-v22-etalon-override';
   const moneyNumber = n => Number.isFinite(Number(n)) ? Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2}) : '—';
   const decimalNumber = n => Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
   const percentNumber = n => Number(n).toLocaleString('ru-RU',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2});
@@ -40,6 +42,7 @@
     setCheck('checkHeaders',Boolean(state.sources),'Проверка столбцов');
     setCheck('checkDate',Boolean(state.report),'Дата уровня сервиса');
     setCheck('checkNorms',Boolean(state.template && Object.keys(Core.selectedNorms(state.template,$('normSnapshot').value)).length),'Нормативы НК / КК');
+    setCheck('checkEtalon',Boolean(state.etalon?.codes?.length),`Эталон ТП (${state.etalon?.codes?.length||0} кодов)`);
     $('processStock').disabled=!names;
   }
   function setCheck(id,ok,text) {
@@ -123,16 +126,17 @@
       state.report=null;$('exportStock').disabled=true;$('reportPreviewPanel').hidden=true;
       return toast(`Дата ${date} не найдена в «Уровне сервиса». Выберите дату из списка обнаруженных.`,true);
     }
-    const payload={...state.sources, norms:Core.selectedNorms(state.template,$('normSnapshot').value),catalog:state.template?.catalog||[],flowerCodes:state.template?.flowerCodes||[]};
-    state.report=Core.buildReport(payload,{date,mode:$('reportMode').value});
+    const payload={...state.sources, norms:Core.selectedNorms(state.template,$('normSnapshot').value),catalog:state.template?.catalog||[],flowerCodes:state.template?.flowerCodes||[],etalonCodes:state.etalon?.codes||[]};
+    try{state.report=Core.buildReport(payload,{date,mode:$('reportMode').value});}
+    catch(error){state.report=null;$('exportStock').disabled=true;$('reportPreviewPanel').hidden=true;return toast(error.message,true);}
     $('exportStock').disabled=!state.report.records.length||!state.template;
     $('reportPreviewPanel').hidden=false;
     $('previewSubtitle').textContent=`${state.report.records.length} позиций · ${date} · режим «${modeLabel(state.report.stats.appliedMode)}»`;
     renderStockTable();updateChecks();
     if(state.report.stats.appliedMode!==$('reportMode').value) toast('Образец не загружен: временно применён отбор овощей и фруктов.');
-    if(state.report.stats.normMissing)toast(`Внимание: ${state.report.stats.normMissing} товаров без НК/КК в выбранном НТЗ. При выгрузке они будут явно отмечены.`,true);
+    if(state.template&&state.report.stats.normMissing)toast(`Внимание: ${state.report.stats.normMissing} товаров без НК/КК в выбранном НТЗ. При выгрузке они будут явно отмечены.`,true);
   }
-  function modeLabel(mode){return {reference:'По списку из образца',fresh:'Овощи и фрукты',all:'Все товары',flowers:'Код цветы'}[mode]||mode;}
+  function modeLabel(mode){return {etalon:'Все ТП из Эталона',reference:'По списку из образца',fresh:'Овощи и фрукты',all:'Все товары в выгрузках',flowers:'Код цветы'}[mode]||mode;}
   ['reportMode','reportDate'].forEach(id=>$(id).addEventListener('change',recalculateReport));
   $('previewStock').addEventListener('click',recalculateReport);
   $('stockSearch').addEventListener('input',renderStockTable);
@@ -142,11 +146,12 @@
     $('stockMetrics').innerHTML='';
     [
       [moneyNumber(stats.total),'Товарных позиций'],
-      [moneyNumber(stats.totalOrder),'Заказано единиц'],
-      [moneyNumber(stats.overMax),'Выше максимума'],
+      [moneyNumber(stats.withSaldo),'Найдены в сальдо'],
+      [moneyNumber(stats.withService),'Найдены в УС'],
+      [moneyNumber(stats.missingBoth),'Нет в обеих выгрузках',true],
       [moneyNumber(stats.normMissing),'Без норм НК / КК',true]
     ].forEach(([v,label,warn])=>{
-      const box=document.createElement('div');box.className='metric'+(warn&&stats.normMissing?' warn':'');
+      const box=document.createElement('div');box.className='metric'+(warn&&(stats.normMissing||stats.missingBoth)?' warn':'');
       const val=document.createElement('strong');val.textContent=v;
       const small=document.createElement('small');small.textContent=label;
       box.append(val,small);$('stockMetrics').append(box);
@@ -159,12 +164,64 @@
     filtered.slice(0,80).forEach(r=>{
       const vals=[r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.vich,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment];
       const tr=document.createElement('tr');
-      vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent= i<=1 ? String(v):typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):v==null?'НЕТ В НТЗ':String(v);if((i===10||i===11)&&v===null)td.classList.add('caution');if((r.maxComment==='Без расхода'||(typeof r.maxComment==='number'&&r.maxComment>0))&&i>=13)td.classList.add('overmax');tr.append(td);});
+      vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent=i<=1?String(v):v==null?((i===10||i===11)?'НЕТ В НТЗ':'—'):typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):String(v);if((i===10||i===11)&&v===null)td.classList.add('caution');if((r.maxComment==='Без расхода'||(typeof r.maxComment==='number'&&r.maxComment>0))&&i>=13)td.classList.add('overmax');tr.append(td);});
       body.append(tr);
     });
     $('stockFooter').textContent=`Показано ${Math.min(filtered.length,80)} из ${filtered.length}. Экспорт включает все ${records.length} позиций, не только первые строки предпросмотра.`;
   }
   function renderHead(table,labels){const tr=document.createElement('tr');labels.forEach(s=>{const th=document.createElement('th');th.textContent=s;tr.append(th);});table.querySelector('thead').replaceChildren(tr);}
+
+  // Embedded master list + locally replaceable override. The canonical source never
+  // changes on GitHub unless the repository itself is updated.
+  function renderEtalonTable(){
+    const list=state.etalon?.codes||[],q=$('etalonSearch').value.trim();
+    const subset=q?list.filter(code=>code.includes(q)):list;
+    renderHead($('etalonTable'),['Код товара','Проверка длины']);
+    const body=$('etalonTable').querySelector('tbody');body.replaceChildren();
+    for(const code of subset.slice(0,100)){
+      const tr=document.createElement('tr');const a=document.createElement('td');a.textContent=code;
+      const b=document.createElement('td');b.textContent=code.length===10?'10 цифр':`НЕСТАНДАРТНЫЙ КОД (${code.length} цифр)`;
+      if(code.length!==10)b.classList.add('caution');tr.append(a,b);body.append(tr);
+    }
+    $('etalonFooter').textContent=`Показано ${Math.min(subset.length,100)} из ${subset.length} уникальных кодов. В Excel попадает полный список.`;
+  }
+  function updateEtalonUI(){
+    const e=state.etalon;const size=e?.codes?.length||0;
+    const text=e?`${moneyNumber(size)} уникальных ТП из ${moneyNumber(e.sourceLines)} строк, повторов ${moneyNumber(e.duplicates)}.`:'Справочник не загружен.';
+    $('etalonStatus').textContent=text;
+    $('etalonSideStatus').textContent=`Эталон: ${moneyNumber(size)} уникальных ТП · ${e?.sourceName||'встроенный справочник'}`;
+    $('etalonWarning').textContent=(e?.anomalies?.length||0)?`Коды нестандартной длины (${e.anomalies.length}): ${e.anomalies.map(v=>`${v.code} (${v.length} цифр, строка ${v.line})`).join('; ')}. Не исправлены автоматически.`:'Кодов нестандартной длины нет.';
+    $('etalonInvalid').textContent=(e?.invalid?.length||0)?`Отклонено строк с недопустимыми символами: ${e.invalid.length}. Проверьте загруженный файл.`:'Все строки содержат допустимые числовые коды.';
+    $('etalonBuiltin').textContent=`Встроенная версия: ${moneyNumber(window.MagnitEtalon?.codes?.length||0)} кодов`;
+    $('resetEtalon').hidden=state.etalon===window.MagnitEtalon;
+    renderEtalonTable();updateChecks();
+  }
+  $('etalonSearch').addEventListener('input',renderEtalonTable);
+  try{
+    const stored=localStorage.getItem(ETALON_STORAGE_KEY);
+    if(stored){const saved=JSON.parse(stored);if(saved?.codes?.length)state.etalon=saved;}
+  }catch(e){console.warn('Etalon override not available',e);}
+  $('etalonFile').addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    try{
+      if(!/\.txt$/i.test(file.name))throw new Error('Файл Эталона должен иметь формат .txt.');
+      const parsed=Core.parseEtalon(await file.text());
+      if(!parsed.codes.length)throw new Error('В файле нет подходящих кодов ТП.');
+      if(parsed.invalid.length)throw new Error(`Найдены некорректные строки (${parsed.invalid.length}). Справочник не заменён.`);
+      state.etalon={...parsed,sourceName:file.name,version:'локальная версия'};
+      try{localStorage.setItem(ETALON_STORAGE_KEY,JSON.stringify(state.etalon));}
+      catch(e){toast('Список активен, но не удалось сохранить его в этом браузере.',true);}
+      updateEtalonUI();if(state.sources)recalculateReport();
+      toast(`Эталон обновлён: ${parsed.codes.length} уникальных ТП. Повторов: ${parsed.duplicates}.`);
+    }catch(error){toast(error.message,true);}finally{event.target.value='';}
+  });
+  $('resetEtalon').addEventListener('click',()=>{
+    state.etalon=window.MagnitEtalon;
+    try{localStorage.removeItem(ETALON_STORAGE_KEY);}catch(e){}
+    updateEtalonUI();if(state.sources)recalculateReport();
+    toast('Восстановлен встроенный Эталон.');
+  });
+  updateEtalonUI();
 
   function downloadWorkbook(book,filename) {
     if(typeof XLSX==='undefined')throw new Error('Библиотека Excel не загружена. Подключитесь к интернету и обновите страницу.');
@@ -176,9 +233,9 @@
     try {
       const critical=state.criticalReport?.date===Core.toRuDate(Core.todayIso())?state.criticalReport:null;
       const sheets=window.MagnitReport.prepareSheets({stock:state.report,critical,
-        stockSources:state.sources,template:state.template,snapshot:$('normSnapshot').value});
+        stockSources:state.sources,template:state.template,etalon:state.etalon,snapshot:$('normSnapshot').value});
       window.MagnitExcel.save(sheets,`Отчёт по товарному запасу ${state.report.date}.xlsx`);
-      toast(`Готовый Excel: НТЗ, полный архив, коды цветов, «Цветы», «Контроль»${critical?', Критика':''}.`);
+      toast(`Готовый Excel: все ТП из Эталона, сверка, НТЗ, архив, цветы и контроль${critical?', Критика':''}.`);
     }catch(e){toast(e.message,true);}
   }
   $('exportStock').addEventListener('click',exportStock);
@@ -279,7 +336,7 @@
     records.slice(0,70).forEach(r=>{
       const vals=[r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment];
       const tr=document.createElement('tr');vals.forEach((v,i)=>{
-        const td=document.createElement('td');td.textContent=v==null?'НЕТ В НТЗ':typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):String(v);
+        const td=document.createElement('td');td.textContent=v==null?((i===9||i===10)?'НЕТ В НТЗ':'—'):typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):String(v);
         if((i===9||i===10)&&v===null)td.classList.add('caution');
         if((r.maxComment==='Без расхода'||(typeof r.maxComment==='number'&&r.maxComment>0))&&i>=12)td.classList.add('overmax');tr.append(td);
       });body.append(tr);
@@ -299,7 +356,7 @@
   $('exportCritical').addEventListener('click',()=>{
     if(!state.criticalReport||state.criticalReport.date!==criticalToday())return toast('Критика устарела. Загрузите текущие выгрузки.',true);
     try{
-      const sheets=window.MagnitReport.prepareSheets({critical:state.criticalReport,template:state.template,snapshot:$('normSnapshot').value});
+      const sheets=window.MagnitReport.prepareSheets({critical:state.criticalReport,template:state.template,etalon:state.etalon,snapshot:$('normSnapshot').value});
       window.MagnitExcel.save(sheets,`Критика ${state.criticalReport.date}.xlsx`);
       toast('Критика выгружена с нормативами НТЗ и архивом.');
     }catch(e){toast(e.message,true);}

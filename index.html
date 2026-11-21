@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="assets/styles.css">
   <script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script defer src="assets/core.js"></script>
+  <script defer src="assets/etalon.js"></script>
   <script defer src="assets/export.js"></script>
   <script defer src="assets/report-builder.js"></script>
   <script defer src="assets/app.js"></script>
@@ -21,6 +22,7 @@
       <nav class="navigation" aria-label="Разделы">
         <button class="nav-button active" data-tab="home" aria-current="page"><span class="nav-glyph">▦</span> Обзор</button>
         <button class="nav-button" data-tab="stock"><span class="nav-glyph">▤</span> Товарный запас <span class="nav-pill">01</span></button>
+        <button class="nav-button" data-tab="etalon"><span class="nav-glyph">≡</span> Эталон ТП</button>
         <button class="nav-button" data-tab="critical"><span class="nav-glyph">!</span> Критика <span class="nav-pill">02</span></button>
         <button class="nav-button" data-tab="returns"><span class="nav-glyph">⇄</span> Возвраты ГТ</button>
         <button class="nav-button" data-tab="rules"><span class="nav-glyph">⌘</span> Правила и справка</button>
@@ -28,7 +30,7 @@
       <div class="sidebar-bottom"><div class="privacy-mark">● <span>Локальная обработка</span></div><p>Данные Excel остаются в вашем браузере. Сайт не отправляет файлы на сервер.</p></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Рабочая версия 2.1 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Рабочая версия 2.2 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -53,18 +55,31 @@
               <div class="button-row"><button class="primary-button" id="processStock" disabled>Проверить и объединить файлы <span>→</span></button><span class="muted">Все вычисления выполняются локально</span></div>
             </div>
             <div class="panel"><div class="panel-title"><div class="step">2</div><div><h2>Параметры отчёта</h2><p>Настройте дату и список товаров после загрузки.</p></div></div>
-              <div class="form-grid"><label class="field">Дата отчёта<input type="date" id="reportDate"></label><label class="field">Состав отчёта<select id="reportMode"><option value="reference">По списку из образца</option><option value="fresh">Овощи и фрукты (по признакам)</option><option value="all">Все товары</option><option value="flowers">Код цветы (по справочнику)</option></select></label></div>
+              <div class="form-grid"><label class="field">Дата отчёта<input type="date" id="reportDate"></label><label class="field">Состав отчёта<select id="reportMode"><option value="etalon" selected>Эталон — все товарные позиции</option><option value="reference">По списку из образца</option><option value="fresh">Овощи и фрукты (по признакам)</option><option value="all">Все товары</option><option value="flowers">Код цветы (по справочнику)</option></select></label></div>
               <div id="dateInfo" class="field-note">Дата автоматически определяется по столбцу «Дата операции».</div>
               <div class="button-row"><button class="primary-button" id="exportStock" disabled>Скачать готовый отчёт Excel <span>↓</span></button><button class="secondary-button" id="previewStock" disabled>Обновить расчёт</button></div>
             </div>
             <div class="panel preview-panel" id="reportPreviewPanel" hidden><div class="panel-title flat"><div><h2>Предпросмотр результата</h2><p id="previewSubtitle">Первые строки сформированного отчёта</p></div><input type="search" class="search-box" id="stockSearch" placeholder="Поиск по коду или названию"></div><div class="metrics" id="stockMetrics"></div><div class="table-scroll"><table class="data-table" id="stockTable"><thead></thead><tbody></tbody></table></div><div class="table-footer" id="stockFooter"></div></div>
           </div>
           <aside class="content-aside"><div class="side-panel"><div class="side-icon">◎</div><h3>Нормативы НК / КК</h3><p>НК и КК обязательно подтягиваются из листа «НТЗ». Образец также содержит «Архив НТЗ», лист «код цветы» и шаблон «Цветы».</p><label class="secondary-button full-width file-trigger" for="templateFile">Загрузить образец .xls / .xlsx<input id="templateFile" type="file" accept=".xls,.xlsx" hidden></label><p class="aside-status" id="templateStatus">Справочник ещё не загружен</p><label class="field">Срез нормативов<select id="normSnapshot"><option value="main">Основной НТЗ</option></select></label><div class="field-note" id="archiveInfo">Архив НТЗ будет доступен после импорта образца.</div><button class="text-button" id="clearTemplate" hidden>Удалить локальный справочник</button></div>
-            <div class="side-panel soft-panel"><h3>Проверки перед выгрузкой</h3><div class="check-line" id="checkNames"><span class="check-indicator">○</span> Точные имена файлов</div><div class="check-line" id="checkHeaders"><span class="check-indicator">○</span> Проверка столбцов</div><div class="check-line" id="checkDate"><span class="check-indicator">○</span> Дата уровня сервиса</div><div class="check-line" id="checkNorms"><span class="check-indicator">○</span> Нормативы НК / КК</div></div>
-            <div class="side-panel minimal"><h3>Важно</h3><p>При выгрузке первая колонка выделяется голубой заливкой, НК/КК и комментарии — зелёной, как в примере. УС отображается в процентах с двумя знаками, остальные числовые показатели — с двумя десятичными знаками. Превышение КК выделяется красным. Строки без нормативов явно отмечаются красным. Образец содержит дополнительную бизнес-логику выбора позиций. Пока режим «По списку из образца» использует коды последнего датированного листа, а «Овощи и фрукты» — признаки исходных выгрузок. Эти правила можно уточнять.</p></div>
+            <div class="side-panel"><h3>Эталон товарных позиций</h3><p id="etalonSideStatus">Загрузка эталона…</p><button class="secondary-button full-width" data-go="etalon">Открыть справочник ТП →</button><p class="field-note">Основной режим: все уникальные коды Эталона, включая отсутствующие в ежедневных файлах.</p></div><div class="side-panel soft-panel"><h3>Проверки перед выгрузкой</h3><div class="check-line" id="checkNames"><span class="check-indicator">○</span> Точные имена файлов</div><div class="check-line" id="checkHeaders"><span class="check-indicator">○</span> Проверка столбцов</div><div class="check-line" id="checkDate"><span class="check-indicator">○</span> Дата уровня сервиса</div><div class="check-line" id="checkNorms"><span class="check-indicator">○</span> Нормативы НК / КК</div><div class="check-line" id="checkEtalon"><span class="check-indicator">○</span> Эталон кодов ТП</div></div>
+            <div class="side-panel minimal"><h3>Важно</h3><p>При выгрузке первая колонка выделяется голубой заливкой, НК/КК и комментарии — зелёной, как в примере. УС отображается в процентах с двумя знаками, остальные числовые показатели — с двумя десятичными знаками. Превышение КК выделяется красным. Строки без нормативов явно отмечаются красным. Образец содержит дополнительную бизнес-логику выбора позиций. Режим «Эталон» включает весь мастер-список ТП; «По списку из образца» использует коды последнего датированного листа, а «Овощи и фрукты» — признаки исходных выгрузок. Эти правила можно уточнять.</p></div>
           </aside></div>
         </section>
 
+
+        <section class="view" id="view-etalon">
+          <div class="eyebrow">СПРАВОЧНИК ТОВАРНЫХ ПОЗИЦИЙ</div>
+          <div class="page-title"><div><h1>Эталон — коды всех ТП</h1><p>Основной перечень товарных позиций для формирования полного отчёта и сверки с исходными файлами.</p></div><span class="status-chip">Встроенный справочник</span></div>
+          <div class="panel"><div class="panel-title flat"><div><h2>Состав Эталона</h2><p id="etalonStatus">Список загружается…</p></div></div>
+            <div class="info-row"><div class="info-symbol">✓</div><p>Повторяющиеся коды удалены только из расчёта: в отчёте каждый код ТП встречается один раз. Все коды, которых нет в ежедневных выгрузках, остаются в отчёте, а отсутствующие сведения не заменяются нулями.</p></div>
+            <p class="field-note" id="etalonBuiltin"></p><p class="field-note" id="etalonWarning"></p><p class="field-note" id="etalonInvalid"></p>
+            <div class="button-row"><label class="secondary-button file-trigger" for="etalonFile">Обновить Эталон из .txt<input id="etalonFile" type="file" accept=".txt,text/plain" hidden></label><button class="text-button" id="resetEtalon" hidden>Вернуть встроенный Эталон</button></div>
+            <p class="field-note">Локально загруженный список действует только в этом браузере. Для обновления встроенного списка для всех пользователей нужно обновить файл <code>assets/etalon.js</code> в репозитории.</p>
+          </div>
+          <div class="panel preview-panel"><div class="panel-title flat"><div><h2>Коды ТП</h2><p>Поиск по всему справочнику</p></div><input type="search" class="search-box" id="etalonSearch" placeholder="Введите код товара"></div><div class="table-scroll"><table class="data-table" id="etalonTable"><thead></thead><tbody></tbody></table></div><div class="table-footer" id="etalonFooter"></div></div>
+          <div class="info-row"><div class="info-symbol">!</div><p><strong>Открытый GitHub Pages:</strong> встроенные коды Эталона доступны посетителям и могут быть прочитаны из исходного кода сайта. Если это конфиденциальная номенклатура, не публикуйте этот вариант в открытом репозитории.</p></div>
+        </section>
 
         <section class="view" id="view-critical">
           <div class="eyebrow">КАТЕГОРИЯ / 02</div><div class="page-title"><div><h1>Критика — день в день</h1><p>Отдельный отчёт из двух других Excel-файлов. Не зависит от даты товарного запаса.</p></div><span class="status-chip">Строго сегодня</span></div>
@@ -87,10 +102,10 @@
         </section>
 
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>
-          <div class="panel"><h2 class="rules-heading">Откуда берутся данные</h2><div class="rule-map"><div><span class="rule-number">01</span><strong>Сальдово-оборотная ведомость</strong><p>Код товара, название, начальное и конечное количество.</p></div><span class="map-separator">+</span><div><span class="rule-number">02</span><strong>Уровень сервиса</strong><p>Заказ, импорт, отгрузка, Vicherk, дата операции, тип отбора.</p></div><span class="map-separator">→</span><div><span class="rule-number">03</span><strong>Итоговый Excel</strong><p>Объединение по коду товара, расчёт УС, ТЗ в днях и отклонений.</p></div></div>
+          <div class="panel"><h2 class="rules-heading">Откуда берутся данные</h2><div class="rule-map"><div><span class="rule-number">01</span><strong>Сальдово-оборотная ведомость</strong><p>Код товара, название, начальное и конечное количество.</p></div><span class="map-separator">+</span><div><span class="rule-number">02</span><strong>Уровень сервиса</strong><p>Заказ, импорт, отгрузка, Vicherk, дата операции, тип отбора.</p></div><span class="map-separator">→</span><div><span class="rule-number">03</span><strong>Итоговый Excel</strong><p>Все коды Эталона как основа, объединение по коду товара, расчёт УС, ТЗ в днях и отклонений.</p></div></div>
             <div class="formula-list"><div><strong>УС к заказу</strong><code>Отгрузка ÷ Заказ</code></div><div><strong>УС к импорту</strong><code>Отгрузка ÷ Импорт</code></div><div><strong>Фактический ТЗ, дни</strong><code>Конечное количество ÷ Отгрузка</code></div><div><strong>ТЗ / Заказ</strong><code>Конечное количество ÷ Заказ</code></div><div><strong>Целевой ТЗ Комментарии</strong><code>Фактический ТЗ − НК</code></div><div><strong>Максимальный ТЗ Комментарии</strong><code>Фактический ТЗ − КК</code></div></div>
-            <p class="rule-note">Если знаменатель равен нулю, в числовых коэффициентах используется 0. Если «Заказ» равен 0, в колонках комментариев — «Без расхода». При отсутствии справочника НТЗ нормативы остаются пустыми и отображается предупреждение.</p>
-          </div><div class="info-row"><div class="info-symbol">🔒</div><p>GitHub Pages публикует сам сайт, но не загруженные в браузер Excel-файлы. Не добавляйте коммерческие выгрузки в репозиторий. Загруженный справочник сохраняется в локальном хранилище браузера и доступен только в нём.</p></div>
+            <p class="rule-note">Когда исходный документ не содержит позицию, показатели остаются пустыми, а не нулевыми. Если документ содержит позицию, но знаменатель равен нулю, в числовом коэффициенте используется 0. Если «Заказ» равен 0, в колонках комментариев — «Без расхода». При отсутствии справочника НТЗ нормативы остаются пустыми и отображается предупреждение.</p>
+          </div><div class="info-row"><div class="info-symbol">🔒</div><p>GitHub Pages публикует сам сайт, но не загруженные в браузер Excel-файлы. Не добавляйте коммерческие выгрузки в репозиторий. Встроенный файл Эталона является публичным при публикации сайта, а локально загруженные Excel/НТЗ остаются в браузере.</p></div>
         </section>
       </main>
     </div>

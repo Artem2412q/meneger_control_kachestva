@@ -23,65 +23,93 @@
     const text = `${saldo?.group || ''} ${saldo?.group2 || ''}`.toLowerCase();
     return Boolean(service?.fresh) || /овощ|фрукт|плодоовощ|плод[ыо]|ягод|зелень|гриб/.test(text) || Boolean(catalog?.includes(code));
   }
+  // Normalize a plain-text master of product codes without inventing corrections.
+  function parseEtalon(text) {
+    const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+    const codes=[], seen=new Set(), anomalies=[], invalid=[];
+    let sourceLines=0,duplicates=0;
+    lines.forEach((line,i)=>{
+      const code=line.trim();if(!code)return;
+      sourceLines++;
+      if(!/^\d+$/.test(code)){invalid.push({line:i+1,code});return;}
+      if(seen.has(code)){duplicates++;return;}
+      seen.add(code);codes.push(code);
+      if(code.length!==10)anomalies.push({line:i+1,code,length:code.length});
+    });
+    return {codes,sourceLines,duplicates,anomalies,invalid};
+  }
   function makeRecord(code, saldo, service, rule) {
-    const start = num(saldo?.start);
-    const ending = num(saldo?.end);
-    const order = num(service?.order);
-    const imp = num(service?.imp);
-    const ship = num(service?.ship);
-    const vich = num(service?.vich);
+    const hasSaldo=Boolean(saldo),hasService=Boolean(service);
+    // Missing source data is NULL, not fictitious 0.
+    const start = hasSaldo ? num(saldo.start) : null;
+    const ending = hasSaldo ? num(saldo.end) : null;
+    const order = hasService ? num(service.order) : null;
+    const imp = hasService ? num(service.imp) : null;
+    const ship = hasService ? num(service.ship) : null;
+    const vich = hasService ? num(service.vich) : null;
     const nk = rule && rule.nk != null ? num(rule.nk) : null;
     const kk = rule && rule.kk != null ? num(rule.kk) : null;
-    const usOrder = order ? ship / order : 0;
-    const usImport = imp ? ship / imp : 0;
-    const actualDays = ship ? ending / ship : 0;
-    const orderDays = order ? ending / order : 0;
-    const noOrder = order === 0;
+    const usOrder = hasService ? (order ? ship / order : 0) : null;
+    const usImport = hasService ? (imp ? ship / imp : 0) : null;
+    const actualDays = hasSaldo && hasService ? (ship ? ending / ship : 0) : null;
+    const orderDays = hasSaldo && hasService ? (order ? ending / order : 0) : null;
+    const noData=!hasSaldo||!hasService;
+    const noOrder=order===0;
     return {
       code, name: saldo?.name || service?.name || rule?.name || 'Название не найдено',
-      start, order, imp, ship, usOrder: roundForPreview(usOrder),
-      usImport: roundForPreview(usImport), vich, ending,
-      nk, kk, actualDays: roundForPreview(actualDays), orderDays: roundForPreview(orderDays),
-      targetComment: noOrder ? 'Без расхода' : nk === null ? '' : actualDays - nk,
-      maxComment: noOrder ? 'Без расхода' : kk === null ? '' : actualDays - kk,
-      missingNorm: nk === null || kk === null, missingSaldo: !saldo, hasService: Boolean(service)
+      start, order, imp, ship, usOrder, usImport, vich, ending,
+      nk, kk, actualDays, orderDays,
+      targetComment: noData ? 'Нет данных' : noOrder ? 'Без расхода' : nk===null ? 'Нет НТЗ' : actualDays - nk,
+      maxComment: noData ? 'Нет данных' : noOrder ? 'Без расхода' : kk===null ? 'Нет НТЗ' : actualDays - kk,
+      missingNorm: nk===null || kk===null, missingSaldo: !hasSaldo, missingService: !hasService,
+      missingBoth: noData && !hasSaldo && !hasService,
+      hasService
     };
   }
   function buildReport(payload, { date, mode = 'reference' } = {}) {
     const saldo = payload.saldo || {};
     const perDate = payload.service || {};
     const catalog = payload.catalog || [];
+    const etalonCodes = payload.etalonCodes || [];
     const catalogSet = new Set(catalog);
+    const etalonSet = new Set(etalonCodes);
     const flowerSet=new Set(payload.flowerCodes||[]);
     const norms = payload.norms || {};
-    const selected = Object.create(null);
-    for (const code of Object.keys(saldo)) selected[code] = 1;
-    for (const item of Object.values(perDate)) {
-      if (item.date === date) selected[item.code] = 1;
+    const selected = new Set(Object.keys(saldo));
+    const serviceAtDate = Object.create(null);
+    for (const entry of Object.values(perDate)) {
+      if(entry.date!==date)continue;
+      serviceAtDate[entry.code]=entry;
+      selected.add(entry.code);
     }
     let appliedMode = mode;
     if (mode === 'reference' && !catalog.length) appliedMode = 'fresh';
-    const serviceAtDate = Object.create(null);
-    for (const entry of Object.values(perDate)) {
-      if (entry.date === date) serviceAtDate[entry.code] = entry;
-    }
+    if (mode === 'etalon' && !etalonCodes.length)throw new Error('Эталон товарных позиций не загружен.');
     const records = [];
-    for (const code of Object.keys(selected)) {
-      const s = saldo[code]; const u = serviceAtDate[code];
+    // In master mode the ETALON is the left-hand side of the join.
+    // Preserve its order; all rows appear once, including unmatched codes.
+    const candidates=appliedMode==='etalon'?etalonSet:selected;
+    for (const code of candidates) {
+      const s = saldo[code], u = serviceAtDate[code];
       if (appliedMode === 'reference' && !catalogSet.has(code)) continue;
       if (appliedMode === 'fresh' && !isFresh(s, u, code, catalog)) continue;
       if (appliedMode === 'flowers' && !flowerSet.has(code)) continue;
       records.push(makeRecord(code, s, u, norms[code]));
     }
-    records.sort((a,b) => a.name.localeCompare(b.name, 'ru') || a.code.localeCompare(b.code));
+    if(appliedMode!=='etalon')records.sort((a,b) => a.name.localeCompare(b.name, 'ru') || a.code.localeCompare(b.code));
+    const outsideEtalon=etalonCodes.length?[...selected].filter(code=>!etalonSet.has(code)):[];
     const stats = {
       total: records.length, normMissing: records.filter(r => r.missingNorm).length,
       saldoMissing: records.filter(r => r.missingSaldo).length,
+      serviceMissing: records.filter(r => r.missingService).length,
+      missingBoth: records.filter(r => r.missingBoth).length,
       withoutOrder: records.filter(r => r.order === 0).length,
-      overMax: records.filter(r => r.kk !== null && r.order !== 0 && r.actualDays > r.kk).length,
+      overMax: records.filter(r => r.kk !== null && r.order !== null && r.order !== 0 && r.actualDays !== null && r.actualDays > r.kk).length,
       withService: records.filter(r => r.hasService).length,
-      totalOrder: records.reduce((s,r) => s+r.order, 0),
-      totalShipment: records.reduce((s,r) => s+r.ship, 0), appliedMode
+      withSaldo: records.filter(r => !r.missingSaldo).length,
+      totalOrder: records.reduce((s,r) => s+(r.order||0), 0),
+      totalShipment: records.reduce((s,r) => s+(r.ship||0), 0),
+      etalonCount: etalonCodes.length, outsideEtalon, appliedMode
     };
     return {records, stats, date};
   }
@@ -125,5 +153,5 @@
       flowerCodes:next.flowerCodes?.length?next.flowerCodes:(previous.flowerCodes||[]),
       catalog:next.catalog?.length?next.catalog:(previous.catalog||[])};
   }
-  return { HEADERS, normalize, num, buildReport, makeRecord, parseRuDate, toRuDate, isFresh,selectedNorms,todayIso,mergeNormHistory,buildCriticalReport };
+  return { HEADERS, normalize, num, parseEtalon, buildReport, makeRecord, parseRuDate, toRuDate, isFresh,selectedNorms,todayIso,mergeNormHistory,buildCriticalReport };
 });

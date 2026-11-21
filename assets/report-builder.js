@@ -25,29 +25,58 @@ function makeArchive(template){
 function makeDaySheet(report,{critical=false, flowers=false,normLength=1}={}){
  const rows=report.records.map((r,i)=>{
   const n=i+2,nn=Math.max(2,normLength+1);
-  const ref=idx=>`IFERROR(IF(VLOOKUP(A${n},'НТЗ'!$A$2:$D$${nn},${idx},FALSE)=\"\",\"${NO_NORM}\",VLOOKUP(A${n},'НТЗ'!$A$2:$D$${nn},${idx},FALSE)),\"${NO_NORM}\")`;
+  const ref=idx=>`IFERROR(IF(VLOOKUP(A${n},'НТЗ'!$A$2:$D$${nn},${idx},FALSE)="","${NO_NORM}",VLOOKUP(A${n},'НТЗ'!$A$2:$D$${nn},${idx},FALSE)),"${NO_NORM}")`;
   const nk={f:ref(3),v:r.nk===null?NO_NORM:r.nk,missing:r.nk===null},kk={f:ref(4),v:r.kk===null?NO_NORM:r.kk,missing:r.kk===null};
+  // Missing data must stay blank in the final Excel and in the cached formula values.
+  const usOrder={f:`IF(OR(COUNTBLANK(D${n})>0,COUNTBLANK(F${n})>0),"",IFERROR(F${n}/D${n},0))`,v:r.usOrder??''};
+  const usImport={f:`IF(OR(COUNTBLANK(E${n})>0,COUNTBLANK(F${n})>0),"",IFERROR(F${n}/E${n},0))`,v:r.usImport??''};
+  const stockCol=critical||flowers?'I':'J';
+  const actualCol=critical||flowers?'L':'M';
+  const orderCol=critical||flowers?'M':'N';
+  const nkCol=critical||flowers?'J':'K';
+  const kkCol=critical||flowers?'K':'L';
+  const days={f:`IF(OR(COUNTBLANK(${stockCol}${n})>0,COUNTBLANK(F${n})>0),"",IFERROR(${stockCol}${n}/F${n},0))`,v:r.actualDays??''};
+  const orderDays={f:`IF(OR(COUNTBLANK(${stockCol}${n})>0,COUNTBLANK(D${n})>0),"",IFERROR(${stockCol}${n}/D${n},0))`,v:r.orderDays??''};
+  const comment=which=>{
+   const normCol=which==='nk'?nkCol:kkCol;
+   const val=which==='nk'?r.targetComment:r.maxComment;
+   const fx=`IF(OR(COUNTBLANK(${stockCol}${n})>0,COUNTBLANK(D${n})>0,COUNTBLANK(F${n})>0),"Нет данных",IF(D${n}=0,"Без расхода",IF(ISNUMBER(${normCol}${n}),${actualCol}${n}-${normCol}${n},"Нет НТЗ")))`;
+   return {f:fx,v:val};
+  };
   if(!critical&&!flowers){
-   return [r.code,r.name,r.start,r.order,r.imp,r.ship,{f:`IFERROR(F${n}/D${n},0)`,v:r.usOrder},{f:`IFERROR(F${n}/E${n},0)`,v:r.usImport},r.vich,r.ending,nk,kk,
-   {f:`IFERROR(J${n}/F${n},0)`,v:r.actualDays},{f:`IFERROR(J${n}/D${n},0)`,v:r.orderDays},
-   {f:`IF(D${n}=0,\"Без расхода\",IF(ISNUMBER(K${n}),M${n}-K${n},\"Нет НТЗ\"))`,v:r.order===0?'Без расхода':r.nk===null?'Нет НТЗ':r.targetComment},
-   {f:`IF(D${n}=0,\"Без расхода\",IF(ISNUMBER(L${n}),M${n}-L${n},\"Нет НТЗ\"))`,v:r.order===0?'Без расхода':r.kk===null?'Нет НТЗ':r.maxComment}];
+   return [r.code,r.name,r.start,r.order,r.imp,r.ship,usOrder,usImport,r.vich,r.ending,nk,kk,days,orderDays,comment('nk'),comment('kk')];
   }
-  return [r.code,r.name,r.start,r.order,r.imp,r.ship,{f:`IFERROR(F${n}/D${n},0)`,v:r.usOrder},{f:`IFERROR(F${n}/E${n},0)`,v:r.usImport},r.ending,nk,kk,
-   {f:`IFERROR(I${n}/F${n},0)`,v:r.actualDays},{f:`IFERROR(I${n}/D${n},0)`,v:r.orderDays},
-   {f:`IF(D${n}=0,\"Без расхода\",IF(ISNUMBER(J${n}),L${n}-J${n},\"Нет НТЗ\"))`,v:r.order===0?'Без расхода':r.nk===null?'Нет НТЗ':r.targetComment},
-   {f:`IF(D${n}=0,\"Без расхода\",IF(ISNUMBER(K${n}),L${n}-K${n},\"Нет НТЗ\"))`,v:r.order===0?'Без расхода':r.kk===null?'Нет НТЗ':r.maxComment}];
+  return [r.code,r.name,r.start,r.order,r.imp,r.ship,usOrder,usImport,r.ending,nk,kk,days,orderDays,comment('nk'),comment('kk')];
  });
  const isMain=!critical&&!flowers;
  return {name:flowers?'Цветы':critical?`Критика ${report.date}`:report.date,type:flowers?'flowers':critical?'critical':'report',headers:isMain?Core.HEADERS:CRITICAL_HEADERS,rows,
   widths:isMain?[17,62,20,15,15,15,22,22,17,19,23,23,21,18,27,29]:[17,62,20,15,15,15,22,22,19,23,23,21,18,27,29]};
 }
+function makeEtalonSheet(etalon,stock,stockSources,norm){
+ const codes=etalon?.codes||[];
+ const byCode=new Map((stock?.records||[]).map(r=>[r.code,r]));
+ const date=stock?.date;
+ const serviceDate=new Set(Object.values(stockSources?.service||{}).filter(r=>r.date===date).map(r=>r.code));
+ const hasSources=Boolean(stockSources);
+ const rows=codes.map((code,i)=>{
+  const saldo=stockSources?.saldo?.[code], service=serviceDate.has(code), rule=norm?.[code];
+  const record=byCode.get(code);
+  const status=!hasSources?'Не проверено':!saldo&&!service?'Нет в обеих':!saldo?'Нет в сальдо':!service?'Нет в УС':'ОК';
+  const names=record?.name||saldo?.name||rule?.name||'';
+  return [code,names,hasSources?(saldo?'Да':'Нет'):'—',hasSources?(service?'Да':'Нет'):'—',rule?.nk??NO_NORM,rule?.kk??NO_NORM,status,code.length===10?'':`Проверьте: ${code.length} цифр`];
+ });
+ return {name:'Эталон ТП',headers:['Код товара','Название','Есть в сальдо','Есть в УС за дату','НК (из НТЗ)','КК (из НТЗ)','Сверка','Контроль кода'],rows,widths:[19,60,20,20,20,20,23,27]};
+}
 function makeUsSheet(sources,date){
  const us=Object.values(sources?.service||{}).filter(x=>x.date===date).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
  return {name:'УС',headers:['Код товара','Заказ','Импорт','Отгрузка','Vicherk','Дата операции'],rows:us.map(r=>[r.code,r.order,r.imp,r.ship,r.vich,r.date]),widths:[19,20,20,20,20,20]};
 }
-function makeControl(stock,critical,template,selectedLabel){
+function makeControl(stock,critical,template,selectedLabel,etalon){
  const rows=[['Выбранный срез нормативов',selectedLabel,'НК/КК в отчёте связаны формулами VLOOKUP с листом «НТЗ»'],
+ ['Строк исходного Эталона',etalon?.sourceLines||0,'В том числе повторы; в отчёте каждый код один раз'],
+ ['Уникальных ТП в Эталоне',etalon?.codes?.length||0,'Основной список кодов для полного отчёта'],
+ ['Повторов в Эталоне',etalon?.duplicates||0,'Исключены из итоговых строк'],
+ ['Кодов нестандартной длины',etalon?.anomalies?.length||0,'Не исправлены автоматически; проверьте в листе «Эталон ТП»'],
  ['Исторических срезов НТЗ',template?.snapshots?.length||0,'Сохранены в листе «Архив НТЗ»'],
  ['Кодов цветов',template?.flowerCodes?.length||0,'Лист «код цветы»; лист «Цветы» формируется по совпадениям'],
  ['Дата товарного запаса',stock?.date||'—','Историческая дата возможна'],
@@ -58,14 +87,19 @@ function makeControl(stock,critical,template,selectedLabel){
   rows.push([`${section}: товаров`,rep.records.length,'']);
   rows.push([`${section}: нет НК/КК`,rep.stats.normMissing,'Не подставляем 0; отсутствующие нормативы отмечены в отчёте']);
   rows.push([`${section}: нет сальдо`,rep.stats.saldoMissing,'Недостающие позиции отдельно проверяются']);
+  rows.push([`${section}: нет уровня сервиса`,rep.stats.serviceMissing,'Не подставляем ноль вместо отсутствующих операций']);
+  rows.push([`${section}: нет в обеих выгрузках`,rep.stats.missingBoth,'Код остаётся в отчёте по эталону']);
+  if(rep.stats.outsideEtalon?.length)rows.push([`${section}: коды вне Эталона`,rep.stats.outsideEtalon.length,'Из исходных файлов, отсутствуют в Эталоне']);
+  for(const code of rep.stats.outsideEtalon||[])rows.push([`${section}: ВНЕ ЭТАЛОНА`,code,'Есть в исходной выгрузке, но не включён в режим «Эталон»']);
   for(const r of rep.records){
    if(r.missingNorm)rows.push([`${section}: НЕТ В НТЗ`,r.code,r.name]);
    if(r.missingSaldo)rows.push([`${section}: НЕТ В САЛЬДО`,r.code,r.name]);
+   if(r.missingService)rows.push([`${section}: НЕТ В УС`,r.code,r.name]);
   }
  }
  return {name:'Контроль',headers:['Проверка','Значение или код','Комментарий'],rows,widths:[42,28,81]};
 }
-function prepareSheets({stock=null,critical=null,stockSources=null,template=null,snapshot='main'}={}){
+function prepareSheets({stock=null,critical=null,stockSources=null,template=null,etalon=null,snapshot='main'}={}){
  if(!template||!Object.keys(template.norms||{}).length)throw new Error('Сначала загрузите образец с листом «НТЗ». Без НТЗ отчёт нельзя выгружать.');
  if(!stock&&!critical)throw new Error('Нет подготовленного отчёта.');
  const norm=Core.selectedNorms(template,snapshot);
@@ -74,6 +108,7 @@ function prepareSheets({stock=null,critical=null,stockSources=null,template=null
  const sheets=[];
  if(stock)sheets.push(makeDaySheet(stock,{normLength:normCount}));
  if(critical)sheets.push(makeDaySheet(critical,{critical:true,normLength:normCount}));
+ if(etalon?.codes?.length)sheets.push(makeEtalonSheet(etalon,stock,stockSources,norm));
  sheets.push(makeNormSheet({...template,chosenDate:selectedLabel},norm));
  sheets.push(makeArchive(template));
  sheets.push({name:'код цветы',headers:['Код'],rows:(template.flowerCodes||[]).map(c=>[c]),widths:[22]});
@@ -82,8 +117,8 @@ function prepareSheets({stock=null,critical=null,stockSources=null,template=null
   sheets.push(makeDaySheet(flowerReport,{flowers:true,normLength:normCount}));
   sheets.push(makeUsSheet(stockSources,stock.date));
  }
- sheets.push(makeControl(stock,critical,template,selectedLabel));
+ sheets.push(makeControl(stock,critical,template,selectedLabel,etalon));
  return sheets;
 }
-return {prepareSheets,makeDaySheet,makeArchive,makeNormSheet,NO_NORM};
+return {prepareSheets,makeDaySheet,makeArchive,makeNormSheet,makeEtalonSheet,NO_NORM};
 });
