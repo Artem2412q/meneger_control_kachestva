@@ -8,6 +8,8 @@
   };
   const STORAGE_KEY = 'magnit-rc-v2-reference';
   const moneyNumber = n => Number.isFinite(Number(n)) ? Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2}) : '—';
+  const decimalNumber = n => Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const percentNumber = n => Number(n).toLocaleString('ru-RU',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2});
   let toastTimeout;
 
   function toast(message, error=false) {
@@ -149,7 +151,7 @@
       const small=document.createElement('small');small.textContent=label;
       box.append(val,small);$('stockMetrics').append(box);
     });
-    const headers=['Код товара','Название','Нач. кол-во','Заказ','Импорт','Отгрузка','УС / заказ','УС / импорт','Vicherk','Кон. кол-во','НК (из НТЗ)','КК (из НТЗ)','ТЗ, дни','ТЗ / заказ','Откл. НК','Откл. КК'];
+    const headers=['Код товара','Название','Нач. кол-во','Заказ','Импорт','Отгрузка','УС / заказ, %','УС / импорт, %','Vicherk','Кон. кол-во','НК (из НТЗ)','КК (из НТЗ)','ТЗ, дни','ТЗ / заказ','Откл. НК','Откл. КК'];
     renderHead($('stockTable'),headers);
     const query=$('stockSearch').value.trim().toLowerCase();
     const filtered=query?records.filter(r=>r.code.includes(query)||r.name.toLowerCase().includes(query)):records;
@@ -157,7 +159,7 @@
     filtered.slice(0,80).forEach(r=>{
       const vals=[r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.vich,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment];
       const tr=document.createElement('tr');
-      vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent= i<=1 ? String(v):typeof v==='number'?moneyNumber(v):v==null?'НЕТ В НТЗ':String(v);if((i===10||i===11)&&v===null)td.className='caution';if(i>=14&&typeof v==='number'&&v>0)td.className='caution';tr.append(td);});
+      vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent= i<=1 ? String(v):typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):v==null?'НЕТ В НТЗ':String(v);if((i===10||i===11)&&v===null)td.classList.add('caution');if((r.maxComment==='Без расхода'||(typeof r.maxComment==='number'&&r.maxComment>0))&&i>=13)td.classList.add('overmax');tr.append(td);});
       body.append(tr);
     });
     $('stockFooter').textContent=`Показано ${Math.min(filtered.length,80)} из ${filtered.length}. Экспорт включает все ${records.length} позиций, не только первые строки предпросмотра.`;
@@ -277,8 +279,9 @@
     records.slice(0,70).forEach(r=>{
       const vals=[r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment];
       const tr=document.createElement('tr');vals.forEach((v,i)=>{
-        const td=document.createElement('td');td.textContent=v==null?'НЕТ В НТЗ':typeof v==='number'?moneyNumber(v):String(v);
-        if((i===9||i===10)&&v===null)td.classList.add('caution');tr.append(td);
+        const td=document.createElement('td');td.textContent=v==null?'НЕТ В НТЗ':typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):String(v);
+        if((i===9||i===10)&&v===null)td.classList.add('caution');
+        if((r.maxComment==='Без расхода'||(typeof r.maxComment==='number'&&r.maxComment>0))&&i>=12)td.classList.add('overmax');tr.append(td);
       });body.append(tr);
     });
     if(stats.normMissing)toast(`Критика: отсутствуют НК/КК для ${stats.normMissing} товаров. Проверьте «Контроль».`,true);

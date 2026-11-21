@@ -6,3 +6,6 @@
 #normSnapshot{margin-top:3px}#archiveInfo{margin-top:12px;line-height:1.6}#criticalPanel .data-table th{background:#238ffa;color:#101c32}#criticalPanel .data-table th:nth-child(10),#criticalPanel .data-table th:nth-child(11),#criticalPanel .data-table th:nth-child(14),#criticalPanel .data-table th:nth-child(15){background:#b4e67d}
 #stockTable th{background:#238ffa;color:#112238}#stockTable th:nth-child(11),#stockTable th:nth-child(12),#stockTable th:nth-child(15),#stockTable th:nth-child(16){background:#b4e67d}#stockTable td:first-child,#criticalTable td:first-child{background:#e9f3ff;font-weight:700}
 #stockTable td:nth-child(11),#stockTable td:nth-child(12),#criticalTable td:nth-child(10),#criticalTable td:nth-child(11){background:#edf9e1}
+
+/* Excel-like formatting for exceeded maximum stock. */
+#stockTable td.overmax,#criticalTable td.overmax{background:#ff2424!important;color:#090909!important;font-weight:650}

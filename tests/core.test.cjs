@@ -49,5 +49,22 @@ assert.equal(defs[0].rows[0][11].v,6);
 assert.equal(defs[4].rows.length,1);
 assert.match(exporter.sheetXml(defs[0]),/s="3"/);
 assert.match(exporter.sheetXml(defs[0]),/НЕТ В НТЗ/);
+// Export style regression: retain precision in XML, display % with two decimal places,
+// and show other numeric report columns with exactly two decimal places.
+const stylesXml=exporter.stylesXml();
+assert.match(stylesXml,/<cellXfs count="16">/);
+const xfs=[...stylesXml.matchAll(/<xf numFmtId="(\d+)" fontId=/g)].map(x=>Number(x[1]));
+assert.equal(xfs[xfs.length-1],10); // built-in 0.00%
+assert.equal(xfs[xfs.length-2],2);  // built-in 0.00
+const dailyXml=exporter.sheetXml(defs[0]);
+assert.match(dailyXml,/<c r="G2" s="15">/);
+assert.match(dailyXml,/<c r="H2" s="15">/);
+assert.match(dailyXml,/<c r="M2" s="14">/);
+assert.match(dailyXml,/<c r="N2" s="14">/);
+assert.match(dailyXml,/<c r="O2" s="10">/);
+assert.match(dailyXml,/<c r="P2" s="10">/);
+assert.match(dailyXml,/0\.5/); // ratio is stored without percent multiplication
+const alertReport=C.buildReport({...p,norms:{'123':{nk:1,kk:2}}},{date:'20.11.2026'});
+assert.match(exporter.sheetXml(reportBuilder.makeDaySheet(alertReport,{normLength:1})),/<c r="N2" s="11">/);
 assertThrows(()=>reportBuilder.prepareSheets({stock:crit,template:null}),'НТЗ');
 console.log('Дополнительные проверки: строгая дата критики, объединение архива, цветы, НК/КК, оформление Excel.');

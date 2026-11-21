@@ -14,8 +14,8 @@ function stylesXml(){
  '<font><b/><sz val="10"/><color rgb="FF16391C"/><name val="Aptos"/></font>'].join('');
  const borders='<border><left/><right/><top/><bottom/><diagonal/></border><border><left style="hair"><color rgb="FFD8E2EC"/></left><right style="hair"><color rgb="FFD8E2EC"/></right><top style="hair"><color rgb="FFD8E2EC"/></top><bottom style="hair"><color rgb="FFD8E2EC"/></bottom><diagonal/></border>';
  const xf=(fill,font=0,number=0,wrap=false)=>`<xf numFmtId="${number}" fontId="${font}" fillId="${fill}" borderId="1" xfId="0" applyFill="1" applyAlignment="1"${number?' applyNumberFormat="1"':''}><alignment horizontal="center" vertical="center"${wrap?' wrapText="1"':''}/></xf>`;
- const xfs=[xf(0),xf(3,0),xf(2,1,0,true),xf(4,2,0,true),xf(5,0),xf(6,0),xf(7,0),xf(2,1,0,true),xf(2,1,10,true),xf(3,0,2),xf(5,0,2),xf(6,0,2),xf(3,0,10),xf(5,0,10),xf(0,0,2)].join('');
- return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3">${fonts}</fonts><fills count="8">${fills}</fills><borders count="2">${borders}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="15">${xfs}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+ const xfs=[xf(0),xf(3,0),xf(2,1,0,true),xf(4,2,0,true),xf(5,0),xf(6,0),xf(7,0),xf(2,1,0,true),xf(2,1,10,true),xf(3,0,2),xf(5,0,2),xf(6,0,2),xf(3,0,10),xf(5,0,10),xf(0,0,2),xf(0,0,10)].join('');
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3">${fonts}</fonts><fills count="8">${fills}</fills><borders count="2">${borders}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="16">${xfs}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 }
 function cellXml(value,row,col,style){
  const ref=colName(col)+row;
@@ -35,14 +35,24 @@ function sheetXml(def){
  const all=[head,...rows];const maxCol=Math.max(head.length,...rows.slice(0,10).map(r=>r.length),1);
  let table='';for(let ri=0;ri<all.length;ri++){
    const isHead=ri===0, row=all[ri];if(!row)continue;
+   const isReport=['report','critical','flowers'].includes(def.type);
+   const isMain=def.type==='report';
+   const maxComment=(row[isMain?15:14]&&typeof row[isMain?15:14]==='object')?row[isMain?15:14].v:row[isMain?15:14];
+   const overMax=(typeof maxComment==='number'&&maxComment>0)||maxComment==='Без расхода';
    let contents='';for(let c=0;c<row.length;c++){
-     const item=row[c];let style=isHead?(def.type==='report'||def.type==='critical'||def.type==='flowers'?(c===10||c===11||c===14||c===15?3:2):7):(c===0?1:0);
-     if(def.type==='critical'||def.type==='flowers'){
-       if(isHead) style=(c===9||c===10||c===13||c===14)?3:2;
-     }
-     if(!isHead && (def.type==='report'||def.type==='critical'||def.type==='flowers')){
-       const normCols=def.type==='report'?[10,11]:[9,10];
-       if(normCols.includes(c))style=(item&&typeof item==='object'&&item.missing)?5:4;
+     const item=row[c];
+     let style=isHead?(isReport?((isMain?[10,11,14,15]:[9,10,13,14]).includes(c)?3:2):7):(c===0?1:0);
+     if(!isHead&&isReport){
+       // Excel built-in format 2 = 0.00; format 10 = 0.00%.
+       // The original formula/cache retains full precision, only the visible format changes.
+       if(c>1)style=14;
+       if(c===6||c===7)style=15;
+       const normCols=isMain?[10,11]:[9,10];
+       const commentCols=isMain?[14,15]:[13,14];
+       const redCols=isMain?[13,14,15]:[12,13,14];
+       if(normCols.includes(c))style=(item&&typeof item==='object'&&item.missing)?11:10;
+       if(commentCols.includes(c))style=10;
+       if(overMax&&redCols.includes(c))style=11;
      }
      contents+=cellXml(item,ri+1,c,style);
    }
