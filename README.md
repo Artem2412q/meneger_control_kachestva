@@ -1,0 +1,1 @@
+# meneger_control_kachestva
