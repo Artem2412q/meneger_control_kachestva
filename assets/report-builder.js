@@ -53,15 +53,18 @@ function makeDaySheet(report,{critical=false, flowers=false,normLength=1}={}){
   widths:isMain?[17,62,20,15,15,15,22,22,17,19,23,23,21,18,27,29]:[17,62,20,15,15,15,22,22,19,23,23,21,18,27,29]};
 }
 function makeEtalonSheet(etalon,stock,stockSources,norm){
- const codes=etalon?.codes||[];
+ const allCodes=etalon?.codes||[];
  const byCode=new Map((stock?.records||[]).map(r=>[r.code,r]));
  const date=stock?.date;
  const serviceDate=new Set(Object.values(stockSources?.service||{}).filter(r=>r.date===date).map(r=>r.code));
  const hasSources=Boolean(stockSources);
- const rows=codes.map((code,i)=>{
+ // Only traceable daily items belong in the generated reconciliation sheet.
+ // The complete master stays in assets/etalon.js, not in this daily Excel.
+ const codes=allCodes.filter(code=>hasSources?Boolean(stockSources.saldo?.[code])||serviceDate.has(code):byCode.has(code));
+ const rows=codes.map(code=>{
   const saldo=stockSources?.saldo?.[code], service=serviceDate.has(code), rule=norm?.[code];
   const record=byCode.get(code);
-  const status=!hasSources?'Не проверено':!saldo&&!service?'Нет в обеих':!saldo?'Нет в сальдо':!service?'Нет в УС':'ОК';
+  const status=!hasSources?'Не проверено':!saldo?'Нет в сальдо':!service?'Нет в УС':'ОК';
   const names=record?.name||saldo?.name||rule?.name||'';
   return [code,names,hasSources?(saldo?'Да':'Нет'):'—',hasSources?(service?'Да':'Нет'):'—',rule?.nk??NO_NORM,rule?.kk??NO_NORM,status,code.length===10?'':`Проверьте: ${code.length} цифр`];
  });
@@ -74,7 +77,7 @@ function makeUsSheet(sources,date){
 function makeControl(stock,critical,template,selectedLabel,etalon){
  const rows=[['Выбранный срез нормативов',selectedLabel,'НК/КК в отчёте связаны формулами VLOOKUP с листом «НТЗ»'],
  ['Строк исходного Эталона',etalon?.sourceLines||0,'В том числе повторы; в отчёте каждый код один раз'],
- ['Уникальных ТП в Эталоне',etalon?.codes?.length||0,'Основной список кодов для полного отчёта'],
+ ['Уникальных ТП в Эталоне',etalon?.codes?.length||0,'Справочник допустимых кодов, не источник ежедневных строк'],
  ['Повторов в Эталоне',etalon?.duplicates||0,'Исключены из итоговых строк'],
  ['Кодов нестандартной длины',etalon?.anomalies?.length||0,'Не исправлены автоматически; проверьте в листе «Эталон ТП»'],
  ['Исторических срезов НТЗ',template?.snapshots?.length||0,'Сохранены в листе «Архив НТЗ»'],
@@ -84,11 +87,12 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  ['Отбор для критики',critical?.stats?.appliedMode||'не сформирована','Выбран пользователем; бизнес-правила критических ТП уточняются']];
  for(const [section,rep] of [['Товарный запас',stock],['Критика',critical]]){
   if(!rep)continue;
-  rows.push([`${section}: товаров`,rep.records.length,'']);
+  rows.push([`${section}: товаров`,rep.records.length,'Только товары из двух ежедневных файлов']);
+  rows.push([`${section}: кодов Эталона без ежедневных данных`,rep.stats.etalonNotInSources||0,'Исключены из ежедневных листов и сверки; не создаём фиктивные строки']);
   rows.push([`${section}: нет НК/КК`,rep.stats.normMissing,'Не подставляем 0; отсутствующие нормативы отмечены в отчёте']);
   rows.push([`${section}: нет сальдо`,rep.stats.saldoMissing,'Недостающие позиции отдельно проверяются']);
   rows.push([`${section}: нет уровня сервиса`,rep.stats.serviceMissing,'Не подставляем ноль вместо отсутствующих операций']);
-  rows.push([`${section}: нет в обеих выгрузках`,rep.stats.missingBoth,'Код остаётся в отчёте по эталону']);
+  rows.push([`${section}: нет в обеих выгрузках`,rep.stats.missingBoth,'Такие строки запрещены в итоговом отчёте']);
   if(rep.stats.outsideEtalon?.length)rows.push([`${section}: коды вне Эталона`,rep.stats.outsideEtalon.length,'Из исходных файлов, отсутствуют в Эталоне']);
   for(const code of rep.stats.outsideEtalon||[])rows.push([`${section}: ВНЕ ЭТАЛОНА`,code,'Есть в исходной выгрузке, но не включён в режим «Эталон»']);
   for(const r of rep.records){
@@ -100,7 +104,7 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  return {name:'Контроль',headers:['Проверка','Значение или код','Комментарий'],rows,widths:[42,28,81]};
 }
 function prepareSheets({stock=null,critical=null,stockSources=null,criticalSources=null,template=null,etalon=null,snapshot='main'}={}){
- if(!template||!Object.keys(template.norms||{}).length)throw new Error('Встроенный НТЗ не загрузился. Проверьте файл assets/norms.js в версии сайта 2.5.');
+ if(!template||!Object.keys(template.norms||{}).length)throw new Error('Встроенный НТЗ не загрузился. Проверьте файл assets/norms.js в версии сайта 2.6.');
  if(!stock&&!critical)throw new Error('Нет подготовленного отчёта.');
  const norm=Core.selectedNorms(template,snapshot);
  const selectedLabel=snapshot==='main'?`Основной НТЗ (${template.mainDate||'без даты'})`:`Архив ${template.snapshots?.[Number(snapshot)]?.date||'без даты'}`;

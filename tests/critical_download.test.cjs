@@ -31,7 +31,8 @@ function call(action, payload){return new Promise((resolve,reject)=>{
  assert.equal(crit.date,date);assert.equal(crit.records.length,1);assert.equal(crit.records[0].actualDays,4);
  assert.throws(()=>Core.buildCriticalReport(payload,{today:'2026-11-22',mode:'fresh'}),/строго за сегодня/);
  const master=Core.buildCriticalReport(payload,{today:'2026-11-21',mode:'etalon'});
- assert.equal(master.records.length,2);
+ assert.equal(master.records.length,1);
+ assert.equal(master.stats.etalonNotInSources,1);
  const sheets=R.prepareSheets({critical:crit,criticalSources:src,template:tmpl,etalon:{codes:[item,'1000036170'],sourceLines:2,duplicates:0}});
  assert.equal(sheets[0].name,'Критика '+date);
  assert.deepEqual(sheets.map(s=>s.name),['Критика '+date,'Эталон ТП','НТЗ','Архив НТЗ','код цветы','Контроль']);

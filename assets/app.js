@@ -31,7 +31,7 @@
     const node=$('stockExportHint');if(!node)return;
     if(!state.files.saldo||!state.files.service)node.textContent='Шаг 1: выберите обе исходные таблицы Excel.';
     else if(!state.sources)node.textContent='Шаг 2: нажмите «Проверить и объединить файлы» и дождитесь окончания обработки.';
-    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.5 и перезагрузите страницу (Ctrl+F5).';
+    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.6 и перезагрузите страницу (Ctrl+F5).';
     else if(!state.report?.records?.length)node.textContent='Проверьте дату отчёта и состав товарных позиций: пока нет строк для выгрузки.';
     else node.textContent='Отчёт готов. Нажмите «Скачать готовый отчёт Excel». Если браузер блокирует загрузку — появится резервная ссылка.';
   }
@@ -159,7 +159,7 @@
     if(state.report.stats.appliedMode!==$('reportMode').value) toast('Образец не загружен: временно применён отбор овощей и фруктов.');
     if(state.template&&state.report.stats.normMissing)toast(`Внимание: ${state.report.stats.normMissing} товаров без НК/КК в выбранном НТЗ. При выгрузке они будут явно отмечены.`,true);
   }
-  function modeLabel(mode){return {etalon:'Все ТП из Эталона',reference:'По списку из образца',fresh:'Овощи и фрукты',all:'Все товары в выгрузках',flowers:'Код цветы'}[mode]||mode;}
+  function modeLabel(mode){return {etalon:'Подтверждённые ТП из Эталона',reference:'По списку из образца',fresh:'Овощи и фрукты',all:'Все товары в выгрузках',flowers:'Код цветы'}[mode]||mode;}
   ['reportMode','reportDate'].forEach(id=>$(id).addEventListener('change',recalculateReport));
   $('previewStock').addEventListener('click',recalculateReport);
   $('stockSearch').addEventListener('input',renderStockTable);
@@ -171,7 +171,7 @@
       [moneyNumber(stats.total),'Товарных позиций'],
       [moneyNumber(stats.withSaldo),'Найдены в сальдо'],
       [moneyNumber(stats.withService),'Найдены в УС'],
-      [moneyNumber(stats.missingBoth),'Нет в обеих выгрузках',true],
+      [moneyNumber(stats.etalonNotInSources||0),'Кодов Эталона без данных (исключены)',false],
       [moneyNumber(stats.normMissing),'Без норм НК / КК',true]
     ].forEach(([v,label,warn])=>{
       const box=document.createElement('div');box.className='metric'+(warn&&(stats.normMissing||stats.missingBoth)?' warn':'');
@@ -206,7 +206,7 @@
       const b=document.createElement('td');b.textContent=code.length===10?'10 цифр':`НЕСТАНДАРТНЫЙ КОД (${code.length} цифр)`;
       if(code.length!==10)b.classList.add('caution');tr.append(a,b);body.append(tr);
     }
-    $('etalonFooter').textContent=`Показано ${Math.min(subset.length,100)} из ${subset.length} уникальных кодов. В Excel попадает полный список.`;
+    $('etalonFooter').textContent=`Показано ${Math.min(subset.length,100)} из ${subset.length} кодов справочника. В ежедневный Excel попадают только подтверждённые двумя выгрузками позиции (достаточно наличия в одной).`;
   }
   function updateEtalonUI(){
     const e=state.etalon;const size=e?.codes?.length||0;
@@ -281,7 +281,7 @@
     const criticalSelect=$('criticalNormSnapshot');
     criticalSelect.replaceChildren(...[...select.options].map(o=>new Option(o.text,o.value)));
     criticalSelect.value=select.value;criticalSelect.disabled=!present;
-    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.5).';
+    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.6).';
     $('criticalTemplateStatus').textContent=present?`НТЗ подключён автоматически: ${Object.keys(Core.selectedNorms(template,select.value)).length} кодов; ${select.options[select.selectedIndex].text}. Ежедневно загружайте только ДВА Excel.`:'Не удалось прочитать встроенный НТЗ. Проверьте публикацию assets/norms.js.';
     $('archiveInfo').textContent=present?`Встроенный архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Архив войдёт в итоговый Excel.`:'Не удалось подключить архив НТЗ.';
     $('clearTemplate').hidden=!template?.userTemplate;updateChecks();updateExportHint();updateCriticalExportState();
@@ -336,8 +336,8 @@
     if(!validSaldo||!validService)reason='Шаг 1: выберите ДВА отдельных Excel для Критики с точными названиями.';
     else if(!state.criticalSources)reason='Шаг 2: нажмите «Проверить критику за сегодня» и дождитесь обработки.';
     else if(!dates.includes(today))reason=`Выгрузка НЕ за сегодня (${today}). Даты уровня сервиса: ${dates.join(', ')||'не найдены'}. Критика за вчера не скачивается — загрузите два файла за сегодня.`;
-    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.5).';
-    else if(!state.criticalReport?.records?.length)reason='По выбранному режиму не найдено товарных позиций. Переключите «Состав критики» на «Эталон — все товарные позиции» или «Все позиции из выгрузок».';
+    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.6).';
+    else if(!state.criticalReport?.records?.length)reason='По выбранному режиму не найдено товарных позиций. Переключите «Состав критики» на «Эталон — подтверждённые позиции» или «Все позиции из выгрузок».';
     else if(state.criticalReport.date!==today)reason='Дата Критики изменилась. Заново обработайте две сегодняшние выгрузки.';
     $('exportCritical').disabled=!!reason;
     $('criticalExportHint').textContent=reason||`Критика готова: ${state.criticalReport.records.length} ТП за ${today}. Нажмите «Скачать критику Excel»; при блокировке автоматической загрузки появится резервная ссылка.`;

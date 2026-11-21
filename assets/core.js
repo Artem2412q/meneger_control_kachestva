@@ -56,7 +56,7 @@
     const noData=!hasSaldo||!hasService;
     const noOrder=order===0;
     return {
-      code, name: saldo?.name || service?.name || rule?.name || 'Название не найдено',
+      code, name: saldo?.name || service?.name || rule?.name || '',
       start, order, imp, ship, usOrder, usImport, vich, ending,
       nk, kk, actualDays, orderDays,
       targetComment: noData ? 'Нет данных' : noOrder ? 'Без расхода' : nk===null ? 'Нет НТЗ' : actualDays - nk,
@@ -86,11 +86,13 @@
     if (mode === 'reference' && !catalog.length) appliedMode = 'fresh';
     if (mode === 'etalon' && !etalonCodes.length)throw new Error('Эталон товарных позиций не загружен.');
     const records = [];
-    // In master mode the ETALON is the left-hand side of the join.
-    // Preserve its order; all rows appear once, including unmatched codes.
-    const candidates=appliedMode==='etalon'?etalonSet:selected;
+    // ETALON is an allowlist, NOT a source of daily factual records.
+    // Preserve master order, but select ONLY codes present in at least one daily file.
+    const candidates=appliedMode==='etalon'?[...etalonSet].filter(code=>selected.has(code)):selected;
     for (const code of candidates) {
       const s = saldo[code], u = serviceAtDate[code];
+      // Never create rows solely from ETALON, NТЗ or archived reference codes.
+      if (!s && !u) continue;
       if (appliedMode === 'reference' && !catalogSet.has(code)) continue;
       if (appliedMode === 'fresh' && !isFresh(s, u, code, catalog)) continue;
       if (appliedMode === 'flowers' && !flowerSet.has(code)) continue;
@@ -109,7 +111,7 @@
       withSaldo: records.filter(r => !r.missingSaldo).length,
       totalOrder: records.reduce((s,r) => s+(r.order||0), 0),
       totalShipment: records.reduce((s,r) => s+(r.ship||0), 0),
-      etalonCount: etalonCodes.length, outsideEtalon, appliedMode
+      etalonCount: etalonSet.size, etalonNotInSources: [...etalonSet].filter(code=>!selected.has(code)).length, outsideEtalon, appliedMode
     };
     return {records, stats, date};
   }

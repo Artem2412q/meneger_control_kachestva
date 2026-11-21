@@ -31,11 +31,20 @@ function callWorker(action,data){return new Promise((resolve,reject)=>{
  vm.runInContext(fs.readFileSync(path.resolve(basedir,'assets/etalon.js'),'utf8'),context2);
  const fullEtalon=context2.window.MagnitEtalon;
  const fullReport=C.buildReport({...stock,norms:template.norms,etalonCodes:fullEtalon.codes},{date,mode:'etalon'});
- assert.equal(fullReport.records.length,4287);
+ assert.ok(fullReport.records.length>0 && fullReport.records.length<4287);
+ assert.equal(fullReport.stats.missingBoth,0);
+ assert.equal(fullReport.stats.etalonNotInSources,4287-fullReport.records.length);
+ const evidence=new Set([...Object.keys(stock.saldo),...Object.values(stock.service).filter(r=>r.date===date).map(r=>r.code)]);
+ assert.ok(fullReport.records.every(r=>evidence.has(r.code)));
+ const phantom='1000184772';
+ if(!evidence.has(phantom))assert.ok(!fullReport.records.some(r=>r.code===phantom));
  const fullSheets=R.prepareSheets({stock:fullReport,stockSources:stock,template,etalon:fullEtalon});
+ const etalonSheet=fullSheets.find(s=>s.name==='Эталон ТП');
+ assert.ok(etalonSheet.rows.every(r=>evidence.has(r[0])));
+ assert.equal(etalonSheet.rows.filter(r=>r[6]==='Нет в обеих').length,0);
  const output=X.makeWorkbook(fullSheets);
  assert.ok(output.size>100000);
- fs.writeFileSync('/mnt/data/MAGNIT_EXPORT_TEST_FULL.xlsx',Buffer.from(await output.arrayBuffer()));
+ // Verification uses the site's own Excel generator; keep data local and avoid republishing a large commercial file.
  console.log('FULL EXPORT:',fullSheets.map(x=>x.name).join(', '),'codes',fullReport.records.length,'zipBytes',output.size,'ms',Date.now()-start);
 
 })().catch(e=>{console.error('FAILED',e);process.exitCode=1});
