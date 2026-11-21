@@ -31,7 +31,7 @@
     const node=$('stockExportHint');if(!node)return;
     if(!state.files.saldo||!state.files.service)node.textContent='Шаг 1: выберите обе исходные таблицы Excel.';
     else if(!state.sources)node.textContent='Шаг 2: нажмите «Проверить и объединить файлы» и дождитесь окончания обработки.';
-    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.6 и перезагрузите страницу (Ctrl+F5).';
+    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.7 и перезагрузите страницу (Ctrl+F5).';
     else if(!state.report?.records?.length)node.textContent='Проверьте дату отчёта и состав товарных позиций: пока нет строк для выгрузки.';
     else node.textContent='Отчёт готов. Нажмите «Скачать готовый отчёт Excel». Если браузер блокирует загрузку — появится резервная ссылка.';
   }
@@ -47,11 +47,25 @@
       el.classList.toggle('active',active);
       if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');
     });
-    document.querySelector('.sidebar').classList.remove('open');
+    closeMobileMenu();
     window.scrollTo({top:0,behavior:'smooth'});
   }
   document.querySelectorAll('[data-tab],[data-go]').forEach(el=>el.addEventListener('click',()=>changeTab(el.dataset.tab||el.dataset.go)));
-  $('mobileMenu').addEventListener('click',()=>document.querySelector('.sidebar').classList.toggle('open'));
+  function closeMobileMenu(){
+    document.querySelector('.sidebar').classList.remove('open');
+    $('mobileBackdrop').hidden=true;
+    $('mobileMenu').setAttribute('aria-expanded','false');
+    document.body.classList.remove('menu-open');
+  }
+  $('mobileMenu').addEventListener('click',()=>{
+    const open=!document.querySelector('.sidebar').classList.contains('open');
+    document.querySelector('.sidebar').classList.toggle('open',open);
+    $('mobileBackdrop').hidden=!open;
+    $('mobileMenu').setAttribute('aria-expanded',String(open));
+    document.body.classList.toggle('menu-open',open);
+  });
+  $('mobileBackdrop').addEventListener('click',closeMobileMenu);
+  document.addEventListener?.('keydown',e=>{if(e.key==='Escape')closeMobileMenu();});
 
   function baseName(filename){ return filename.replace(/\.(xlsx|xls)$/i,'').toLowerCase(); }
   function validateName(file, expected) {
@@ -104,7 +118,7 @@
     return new Promise((resolve,reject)=>{
       if(typeof Worker === 'undefined')return reject(new Error('Этот браузер не поддерживает обработку файлов в отдельном потоке.'));
       let worker;
-      try{worker=new Worker('assets/worker.js');}catch(e){return reject(e);}
+      try{worker=new Worker('assets/worker.js?v=2.7');}catch(e){return reject(e);}
       let done=false;
       worker.onmessage=e=>{
         const msg=e.data;
@@ -154,7 +168,8 @@
     $('exportStock').disabled=!state.report.records.length||!state.template;
     resetDownloadLink('stockDownloadLink');updateExportHint();
     $('reportPreviewPanel').hidden=false;
-    $('previewSubtitle').textContent=`${state.report.records.length} позиций · ${date} · режим «${modeLabel(state.report.stats.appliedMode)}»`;
+    $('previewSubtitle').textContent=`${state.report.records.length} фактических позиций · ${date} · «${modeLabel(state.report.stats.appliedMode)}»`;
+    $('stockFactNote').textContent=`✓ Только факт: исключено ${state.report.stats.excludedEmpty||0} позиций без остатков и движения; справочники НТЗ и Эталон не создают строки.`;
     renderStockTable();updateChecks();
     if(state.report.stats.appliedMode!==$('reportMode').value) toast('Образец не загружен: временно применён отбор овощей и фруктов.');
     if(state.template&&state.report.stats.normMissing)toast(`Внимание: ${state.report.stats.normMissing} товаров без НК/КК в выбранном НТЗ. При выгрузке они будут явно отмечены.`,true);
@@ -171,7 +186,7 @@
       [moneyNumber(stats.total),'Товарных позиций'],
       [moneyNumber(stats.withSaldo),'Найдены в сальдо'],
       [moneyNumber(stats.withService),'Найдены в УС'],
-      [moneyNumber(stats.etalonNotInSources||0),'Кодов Эталона без данных (исключены)',false],
+      [moneyNumber(stats.excludedEmpty||0),'Пустых строк убрано',false],
       [moneyNumber(stats.normMissing),'Без норм НК / КК',true]
     ].forEach(([v,label,warn])=>{
       const box=document.createElement('div');box.className='metric'+(warn&&(stats.normMissing||stats.missingBoth)?' warn':'');
@@ -190,7 +205,7 @@
       vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent=i<=1?String(v):v==null?((i===10||i===11)?'НЕТ В НТЗ':'—'):typeof v==='number'?(i===6||i===7?percentNumber(v):decimalNumber(v)):String(v);if((i===10||i===11)&&v===null)td.classList.add('caution');if((r.maxComment==='Без расхода'||(typeof r.maxComment==='number'&&r.maxComment>0))&&i>=13)td.classList.add('overmax');tr.append(td);});
       body.append(tr);
     });
-    $('stockFooter').textContent=`Показано ${Math.min(filtered.length,80)} из ${filtered.length}. Экспорт включает все ${records.length} позиций, не только первые строки предпросмотра.`;
+    $('stockFooter').textContent=`Показано ${Math.min(filtered.length,80)} из ${filtered.length} подтверждённых ТП. В Excel попадут все ${records.length} строк с фактическими данными; пустые исключены.`;
   }
   function renderHead(table,labels){const tr=document.createElement('tr');labels.forEach(s=>{const th=document.createElement('th');th.textContent=s;tr.append(th);});table.querySelector('thead').replaceChildren(tr);}
 
@@ -206,12 +221,13 @@
       const b=document.createElement('td');b.textContent=code.length===10?'10 цифр':`НЕСТАНДАРТНЫЙ КОД (${code.length} цифр)`;
       if(code.length!==10)b.classList.add('caution');tr.append(a,b);body.append(tr);
     }
-    $('etalonFooter').textContent=`Показано ${Math.min(subset.length,100)} из ${subset.length} кодов справочника. В ежедневный Excel попадают только подтверждённые двумя выгрузками позиции (достаточно наличия в одной).`;
+    $('etalonFooter').textContent=`Показано ${Math.min(subset.length,100)} из ${subset.length} кодов справочника. В ежедневный Excel попадают только коды с фактическими данными (из одной или обеих выгрузок). Нулевые и пустые позиции исключаются.`;
   }
   function updateEtalonUI(){
     const e=state.etalon;const size=e?.codes?.length||0;
     const text=e?`${moneyNumber(size)} уникальных ТП из ${moneyNumber(e.sourceLines)} строк, повторов ${moneyNumber(e.duplicates)}.`:'Справочник не загружен.';
     $('etalonStatus').textContent=text;
+    if($('homeEtalonCount'))$('homeEtalonCount').textContent=moneyNumber(size);
     $('etalonSideStatus').textContent=`Эталон: ${moneyNumber(size)} уникальных ТП · ${e?.sourceName||'встроенный справочник'}`;
     $('etalonWarning').textContent=(e?.anomalies?.length||0)?`Коды нестандартной длины (${e.anomalies.length}): ${e.anomalies.map(v=>`${v.code} (${v.length} цифр, строка ${v.line})`).join('; ')}. Не исправлены автоматически.`:'Кодов нестандартной длины нет.';
     $('etalonInvalid').textContent=(e?.invalid?.length||0)?`Отклонено строк с недопустимыми символами: ${e.invalid.length}. Проверьте загруженный файл.`:'Все строки содержат допустимые числовые коды.';
@@ -281,7 +297,7 @@
     const criticalSelect=$('criticalNormSnapshot');
     criticalSelect.replaceChildren(...[...select.options].map(o=>new Option(o.text,o.value)));
     criticalSelect.value=select.value;criticalSelect.disabled=!present;
-    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.6).';
+    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.7).';
     $('criticalTemplateStatus').textContent=present?`НТЗ подключён автоматически: ${Object.keys(Core.selectedNorms(template,select.value)).length} кодов; ${select.options[select.selectedIndex].text}. Ежедневно загружайте только ДВА Excel.`:'Не удалось прочитать встроенный НТЗ. Проверьте публикацию assets/norms.js.';
     $('archiveInfo').textContent=present?`Встроенный архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Архив войдёт в итоговый Excel.`:'Не удалось подключить архив НТЗ.';
     $('clearTemplate').hidden=!template?.userTemplate;updateChecks();updateExportHint();updateCriticalExportState();
@@ -336,7 +352,7 @@
     if(!validSaldo||!validService)reason='Шаг 1: выберите ДВА отдельных Excel для Критики с точными названиями.';
     else if(!state.criticalSources)reason='Шаг 2: нажмите «Проверить критику за сегодня» и дождитесь обработки.';
     else if(!dates.includes(today))reason=`Выгрузка НЕ за сегодня (${today}). Даты уровня сервиса: ${dates.join(', ')||'не найдены'}. Критика за вчера не скачивается — загрузите два файла за сегодня.`;
-    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.6).';
+    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.7).';
     else if(!state.criticalReport?.records?.length)reason='По выбранному режиму не найдено товарных позиций. Переключите «Состав критики» на «Эталон — подтверждённые позиции» или «Все позиции из выгрузок».';
     else if(state.criticalReport.date!==today)reason='Дата Критики изменилась. Заново обработайте две сегодняшние выгрузки.';
     $('exportCritical').disabled=!!reason;
@@ -386,9 +402,10 @@
     updateCriticalExportState();
     $('criticalPanel').hidden=false;
     const {stats,records}=state.criticalReport;
-    $('criticalSummary').textContent=`Сегодня ${date} · ${records.length} товаров · ${modeLabel(state.criticalReport.stats.appliedMode)}`;
+    $('criticalSummary').textContent=`Сегодня ${date} · ${records.length} фактических ТП · ${modeLabel(state.criticalReport.stats.appliedMode)}`;
+    $('criticalFactNote').textContent=`✓ Только факт: исключено ${stats.excludedEmpty||0} позиций без остатков и движения.`;
     $('criticalMetrics').replaceChildren();
-    for(const [value,name] of [[stats.total,'Товарных позиций'],[stats.totalOrder,'Заказ'],[stats.overMax,'Выше КК'],[stats.normMissing,'Нормы не найдены']]){
+    for(const [value,name] of [[stats.total,'Товарных позиций'],[stats.totalOrder,'Заказ'],[stats.overMax,'Выше КК'],[stats.excludedEmpty||0,'Пустых строк убрано'],[stats.normMissing,'Нормы не найдены']]){
       const box=document.createElement('div');box.className='metric';
       const strong=document.createElement('strong');strong.textContent=moneyNumber(value);
       const small=document.createElement('small');small.textContent=name;box.append(strong,small);$('criticalMetrics').append(box);

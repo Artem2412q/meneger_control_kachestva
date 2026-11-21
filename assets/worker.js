@@ -39,6 +39,10 @@ function requireColumns(header, expected, filename) {
   return indices;
 }
 function value(row, cols, name) {return raw(row[cols[name]]);}
+// A blank source cell is missing data, not a confirmed numeric zero.
+function nullableQuantity(value){
+  return value===null || value===undefined || String(value).trim()==='' ? null : Core.num(value);
+}
 function productCode(v){ return Core.normalize(v); }
 function serviceDate(value){
   if (typeof value === 'number') {
@@ -53,9 +57,9 @@ async function parseSaldo(book){
   let cols,group2;const out=Object.create(null),duplicates=[];
   await book.eachRow(null,(row,i)=>{
     if(i===0){const h=mapHeaders(row);cols=requireColumns(h,['Код товара','Название','Начальное количество','Конечное количество','ГР_ПНАЗВ'],'Сальдово-оборотная ведомость');group2=h['полное название группы 2'];return;}
-    const code=productCode(value(row,cols,'Код товара'));if(!code)return;
-    const item={name:value(row,cols,'Название')||'',start:Core.num(value(row,cols,'Начальное количество')),
-      end:Core.num(value(row,cols,'Конечное количество')),group:value(row,cols,'ГР_ПНАЗВ')||'',group2:group2==null?'':(raw(row[group2])||'')};
+    const code=productCode(value(row,cols,'Код товара'));if(!/^\d+$/.test(code))return;
+    const item={name:value(row,cols,'Название')||'',start:nullableQuantity(value(row,cols,'Начальное количество')),
+      end:nullableQuantity(value(row,cols,'Конечное количество')),group:value(row,cols,'ГР_ПНАЗВ')||'',group2:group2==null?'':(raw(row[group2])||'')};
     if(out[code])duplicates.push(code);
     out[code]=item;
   });
@@ -65,18 +69,18 @@ async function parseService(book){
   let cols,rcIndex;const out=Object.create(null),dates=Object.create(null),rcs=new Set();
   await book.eachRow(null,(row,i)=>{
     if(i===0){const h=mapHeaders(row);cols=requireColumns(h,['Код товара','Наим_ТП','Заказ','Импорт','Отгрузка','Vicherk','Дата операции','Тип_Отбор'],'Уровень сервиса');rcIndex=h['рц'];return;}
-    const code=productCode(value(row,cols,'Код товара'));if(!code)return;
+    const code=productCode(value(row,cols,'Код товара'));if(!/^\d+$/.test(code))return;
     const date=serviceDate(value(row,cols,'Дата операции'));
     if(!Core.parseRuDate(date))throw Error(`Неизвестный формат даты операции в строке ${i+1}: ${date}`);
     dates[date]=(dates[date]||0)+1;
     if(rcIndex!==undefined&&raw(row[rcIndex])!=null)rcs.add(String(raw(row[rcIndex])));
     const key=`${date}|${code}`;
-    if(!out[key])out[key]={code,date,name:value(row,cols,'Наим_ТП')||'',order:0,imp:0,ship:0,vich:0,fresh:false};
+    if(!out[key])out[key]={code,date,name:value(row,cols,'Наим_ТП')||'',order:null,imp:null,ship:null,vich:null,fresh:false};
     const target=out[key];
-    target.order+=Core.num(value(row,cols,'Заказ'));
-    target.imp+=Core.num(value(row,cols,'Импорт'));
-    target.ship+=Core.num(value(row,cols,'Отгрузка'));
-    target.vich+=Core.num(value(row,cols,'Vicherk'));
+    for(const [field,header] of [['order','Заказ'],['imp','Импорт'],['ship','Отгрузка'],['vich','Vicherk']]){
+      const quantity=nullableQuantity(value(row,cols,header));
+      if(quantity!==null)target[field]=(target[field]??0)+quantity;
+    }
     if(String(value(row,cols,'Тип_Отбор')||'').toLowerCase().includes('овощи-фрукты'))target.fresh=true;
   });
   return {items:out,dates,rcs:[...rcs]};
@@ -88,7 +92,7 @@ function archiveDate(value){
   return serviceDate(value);
 }
 function normRow(row,offset){
-  const code=productCode(raw(row[offset]));if(!code)return null;
+  const code=productCode(raw(row[offset]));if(!/^\d+$/.test(code))return null;
   const nk=raw(row[offset+2]),kk=raw(row[offset+3]);
   const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;};
   return {code,name:cellText(row[offset+1]),nk:numeric(nk),kk:numeric(kk)};

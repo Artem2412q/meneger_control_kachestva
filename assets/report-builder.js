@@ -56,11 +56,13 @@ function makeEtalonSheet(etalon,stock,stockSources,norm){
  const allCodes=etalon?.codes||[];
  const byCode=new Map((stock?.records||[]).map(r=>[r.code,r]));
  const date=stock?.date;
- const serviceDate=new Set(Object.values(stockSources?.service||{}).filter(r=>r.date===date).map(r=>r.code));
+ const serviceRecords=Object.values(stockSources?.service||{}).filter(r=>r.date===date);
+ const serviceDate=new Set(serviceRecords.map(r=>r.code));
+ const serviceByCode=new Map(serviceRecords.map(r=>[r.code,r]));
  const hasSources=Boolean(stockSources);
  // Only traceable daily items belong in the generated reconciliation sheet.
  // The complete master stays in assets/etalon.js, not in this daily Excel.
- const codes=allCodes.filter(code=>hasSources?Boolean(stockSources.saldo?.[code])||serviceDate.has(code):byCode.has(code));
+ const codes=allCodes.filter(code=>hasSources?Core.hasFacts(stockSources.saldo?.[code],serviceByCode.get(code)):byCode.has(code));
  const rows=codes.map(code=>{
   const saldo=stockSources?.saldo?.[code], service=serviceDate.has(code), rule=norm?.[code];
   const record=byCode.get(code);
@@ -71,7 +73,7 @@ function makeEtalonSheet(etalon,stock,stockSources,norm){
  return {name:'Эталон ТП',headers:['Код товара','Название','Есть в сальдо','Есть в УС за дату','НК (из НТЗ)','КК (из НТЗ)','Сверка','Контроль кода'],rows,widths:[19,60,20,20,20,20,23,27]};
 }
 function makeUsSheet(sources,date){
- const us=Object.values(sources?.service||{}).filter(x=>x.date===date).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+ const us=Object.values(sources?.service||{}).filter(x=>x.date===date && Core.hasFacts(null,x)).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
  return {name:'УС',headers:['Код товара','Заказ','Импорт','Отгрузка','Vicherk','Дата операции'],rows:us.map(r=>[r.code,r.order,r.imp,r.ship,r.vich,r.date]),widths:[19,20,20,20,20,20]};
 }
 function makeControl(stock,critical,template,selectedLabel,etalon){
@@ -87,7 +89,8 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  ['Отбор для критики',critical?.stats?.appliedMode||'не сформирована','Выбран пользователем; бизнес-правила критических ТП уточняются']];
  for(const [section,rep] of [['Товарный запас',stock],['Критика',critical]]){
   if(!rep)continue;
-  rows.push([`${section}: товаров`,rep.records.length,'Только товары из двух ежедневных файлов']);
+  rows.push([`${section}: товаров`,rep.records.length,'Только товары с фактическими остатками или движением']);
+  rows.push([`${section}: пустых позиций исключено`,rep.stats.excludedEmpty||0,'Нет ненулевых остатков, заказа, импорта, отгрузки или Vicherk']);
   rows.push([`${section}: кодов Эталона без ежедневных данных`,rep.stats.etalonNotInSources||0,'Исключены из ежедневных листов и сверки; не создаём фиктивные строки']);
   rows.push([`${section}: нет НК/КК`,rep.stats.normMissing,'Не подставляем 0; отсутствующие нормативы отмечены в отчёте']);
   rows.push([`${section}: нет сальдо`,rep.stats.saldoMissing,'Недостающие позиции отдельно проверяются']);
@@ -104,7 +107,7 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  return {name:'Контроль',headers:['Проверка','Значение или код','Комментарий'],rows,widths:[42,28,81]};
 }
 function prepareSheets({stock=null,critical=null,stockSources=null,criticalSources=null,template=null,etalon=null,snapshot='main'}={}){
- if(!template||!Object.keys(template.norms||{}).length)throw new Error('Встроенный НТЗ не загрузился. Проверьте файл assets/norms.js в версии сайта 2.6.');
+ if(!template||!Object.keys(template.norms||{}).length)throw new Error('Встроенный НТЗ не загрузился. Проверьте файл assets/norms.js в версии сайта 2.7.');
  if(!stock&&!critical)throw new Error('Нет подготовленного отчёта.');
  const norm=Core.selectedNorms(template,snapshot);
  const selectedLabel=snapshot==='main'?`Основной НТЗ (${template.mainDate||'без даты'})`:`Архив ${template.snapshots?.[Number(snapshot)]?.date||'без даты'}`;

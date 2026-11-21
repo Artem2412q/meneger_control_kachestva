@@ -18,7 +18,15 @@
     const n = Number(typeof value === 'string' ? value.replace(/\s/g, '').replace(',', '.') : value);
     return Number.isFinite(n) ? n : 0;
   };
-  const roundForPreview = n => Number.isFinite(n) ? n : 0;
+  // A factual daily row requires an observed non-zero quantity or movement.
+  // Master references (ETALON, НТЗ, archive) never create daily rows.
+  function hasFacts(saldo, service) {
+    const fields=[...(saldo ? [saldo.start,saldo.end] : []),
+      ...(service ? [service.order,service.imp,service.ship,service.vich] : [])];
+    return fields.some(value => value!==null && value!==undefined && value!=='' &&
+      Number.isFinite(num(value)) && num(value)!==0);
+  }
+  const optionalNum = value => value===null || value===undefined || value==='' ? null : num(value);
   function isFresh(saldo, service, code, catalog) {
     const text = `${saldo?.group || ''} ${saldo?.group2 || ''}`.toLowerCase();
     return Boolean(service?.fresh) || /овощ|фрукт|плодоовощ|плод[ыо]|ягод|зелень|гриб/.test(text) || Boolean(catalog?.includes(code));
@@ -41,26 +49,26 @@
   function makeRecord(code, saldo, service, rule) {
     const hasSaldo=Boolean(saldo),hasService=Boolean(service);
     // Missing source data is NULL, not fictitious 0.
-    const start = hasSaldo ? num(saldo.start) : null;
-    const ending = hasSaldo ? num(saldo.end) : null;
-    const order = hasService ? num(service.order) : null;
-    const imp = hasService ? num(service.imp) : null;
-    const ship = hasService ? num(service.ship) : null;
-    const vich = hasService ? num(service.vich) : null;
+    const start = hasSaldo ? optionalNum(saldo.start) : null;
+    const ending = hasSaldo ? optionalNum(saldo.end) : null;
+    const order = hasService ? optionalNum(service.order) : null;
+    const imp = hasService ? optionalNum(service.imp) : null;
+    const ship = hasService ? optionalNum(service.ship) : null;
+    const vich = hasService ? optionalNum(service.vich) : null;
     const nk = rule && rule.nk != null ? num(rule.nk) : null;
     const kk = rule && rule.kk != null ? num(rule.kk) : null;
-    const usOrder = hasService ? (order ? ship / order : 0) : null;
-    const usImport = hasService ? (imp ? ship / imp : 0) : null;
-    const actualDays = hasSaldo && hasService ? (ship ? ending / ship : 0) : null;
-    const orderDays = hasSaldo && hasService ? (order ? ending / order : 0) : null;
+    const usOrder = order !== null && ship !== null ? (order ? ship / order : 0) : null;
+    const usImport = imp !== null && ship !== null ? (imp ? ship / imp : 0) : null;
+    const actualDays = ending !== null && ship !== null ? (ship ? ending / ship : 0) : null;
+    const orderDays = ending !== null && order !== null ? (order ? ending / order : 0) : null;
     const noData=!hasSaldo||!hasService;
     const noOrder=order===0;
     return {
       code, name: saldo?.name || service?.name || rule?.name || '',
       start, order, imp, ship, usOrder, usImport, vich, ending,
       nk, kk, actualDays, orderDays,
-      targetComment: noData ? 'Нет данных' : noOrder ? 'Без расхода' : nk===null ? 'Нет НТЗ' : actualDays - nk,
-      maxComment: noData ? 'Нет данных' : noOrder ? 'Без расхода' : kk===null ? 'Нет НТЗ' : actualDays - kk,
+      targetComment: noData || actualDays===null || order===null ? 'Нет данных' : noOrder ? 'Без расхода' : nk===null ? 'Нет НТЗ' : actualDays - nk,
+      maxComment: noData || actualDays===null || order===null ? 'Нет данных' : noOrder ? 'Без расхода' : kk===null ? 'Нет НТЗ' : actualDays - kk,
       missingNorm: nk===null || kk===null, missingSaldo: !hasSaldo, missingService: !hasService,
       missingBoth: noData && !hasSaldo && !hasService,
       hasService
@@ -75,13 +83,16 @@
     const etalonSet = new Set(etalonCodes);
     const flowerSet=new Set(payload.flowerCodes||[]);
     const norms = payload.norms || {};
-    const selected = new Set(Object.keys(saldo));
+    const allSourceCodes = new Set(Object.keys(saldo));
+    const selected = new Set();
     const serviceAtDate = Object.create(null);
     for (const entry of Object.values(perDate)) {
       if(entry.date!==date)continue;
+      if(!entry.code)continue;
       serviceAtDate[entry.code]=entry;
-      selected.add(entry.code);
+      allSourceCodes.add(entry.code);
     }
+    for(const code of allSourceCodes){if(hasFacts(saldo[code],serviceAtDate[code]))selected.add(code);}
     let appliedMode = mode;
     if (mode === 'reference' && !catalog.length) appliedMode = 'fresh';
     if (mode === 'etalon' && !etalonCodes.length)throw new Error('Эталон товарных позиций не загружен.');
@@ -92,7 +103,7 @@
     for (const code of candidates) {
       const s = saldo[code], u = serviceAtDate[code];
       // Never create rows solely from ETALON, NТЗ or archived reference codes.
-      if (!s && !u) continue;
+      if (!hasFacts(s,u)) continue;
       if (appliedMode === 'reference' && !catalogSet.has(code)) continue;
       if (appliedMode === 'fresh' && !isFresh(s, u, code, catalog)) continue;
       if (appliedMode === 'flowers' && !flowerSet.has(code)) continue;
@@ -101,7 +112,7 @@
     if(appliedMode!=='etalon')records.sort((a,b) => a.name.localeCompare(b.name, 'ru') || a.code.localeCompare(b.code));
     const outsideEtalon=etalonCodes.length?[...selected].filter(code=>!etalonSet.has(code)):[];
     const stats = {
-      total: records.length, normMissing: records.filter(r => r.missingNorm).length,
+      total: records.length, excludedEmpty:allSourceCodes.size-selected.size, normMissing: records.filter(r => r.missingNorm).length,
       saldoMissing: records.filter(r => r.missingSaldo).length,
       serviceMissing: records.filter(r => r.missingService).length,
       missingBoth: records.filter(r => r.missingBoth).length,
@@ -155,5 +166,5 @@
       flowerCodes:next.flowerCodes?.length?next.flowerCodes:(previous.flowerCodes||[]),
       catalog:next.catalog?.length?next.catalog:(previous.catalog||[])};
   }
-  return { HEADERS, normalize, num, parseEtalon, buildReport, makeRecord, parseRuDate, toRuDate, isFresh,selectedNorms,todayIso,mergeNormHistory,buildCriticalReport };
+  return { HEADERS, normalize, num, hasFacts, parseEtalon, buildReport, makeRecord, parseRuDate, toRuDate, isFresh,selectedNorms,todayIso,mergeNormHistory,buildCriticalReport };
 });

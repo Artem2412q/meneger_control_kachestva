@@ -3,23 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#b91825">
+  <meta name="theme-color" content="#111B2B">
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
-  <link rel="stylesheet" href="assets/styles.css?v=2.6">
-  <script defer src="assets/core.js?v=2.6"></script>
-  <script defer src="assets/etalon.js?v=2.6"></script>
-  <script defer src="assets/norms.js?v=2.6"></script>
-  <script defer src="assets/export.js?v=2.6"></script>
-  <script defer src="assets/report-builder.js?v=2.6"></script>
-  <script defer src="assets/app.js?v=2.6"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=2.7">
+  <link rel="stylesheet" href="assets/ui-v27.css?v=2.7">
+  <script defer src="assets/core.js?v=2.7"></script>
+  <script defer src="assets/etalon.js?v=2.7"></script>
+  <script defer src="assets/norms.js?v=2.7"></script>
+  <script defer src="assets/export.js?v=2.7"></script>
+  <script defer src="assets/report-builder.js?v=2.7"></script>
+  <script defer src="assets/app.js?v=2.7"></script>
 </head>
 <body>
   <div class="shell">
     <aside class="sidebar" aria-label="Главное меню">
       <div class="brand"><div class="brand-icon" aria-hidden="true">М</div><div><strong>МАГНИТ <span>РЦ</span></strong><small>Центр автоматизации</small></div></div>
       <div class="sidebar-heading">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-      <nav class="navigation" aria-label="Разделы">
+      <nav class="navigation" aria-label="Разделы" id="mainNavigation">
         <button class="nav-button active" data-tab="home" aria-current="page"><span class="nav-glyph">▦</span> Обзор</button>
         <button class="nav-button" data-tab="stock"><span class="nav-glyph">▤</span> Товарный запас <span class="nav-pill">01</span></button>
         <button class="nav-button" data-tab="etalon"><span class="nav-glyph">≡</span> Эталон ТП</button>
@@ -29,13 +30,19 @@
       </nav>
       <div class="sidebar-bottom"><div class="privacy-mark">● <span>Локальная обработка</span></div><p>Данные Excel остаются в вашем браузере. Сайт не отправляет файлы на сервер.</p></div>
     </aside>
+    <button id="mobileBackdrop" class="mobile-backdrop" type="button" tabindex="-1" aria-label="Закрыть меню" hidden></button>
     <div class="workspace">
-      <header class="topbar"><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Рабочая версия 2.6 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.7 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
-          <div class="hero"><div><h1>Отчётность без ручной рутины.</h1><p>Единое пространство для ежедневных Excel-файлов, контрольных проверок и готовых отчётов.</p><button class="primary-button" data-go="stock">Сформировать товарный запас <span>→</span></button></div><div class="hero-illustration" aria-hidden="true"><div class="sheet-picture"><div class="sheet-bar"></div><div class="sheet-rows"><i></i><i></i><i></i><i></i></div><div class="sheet-badge">✓</div></div></div></div>
-          <div class="section-caption"><h2>Категории отчётности</h2><span>Рабочие разделы</span></div>
+          <div class="hero"><div class="hero-content"><div class="hero-label"><span class="hero-label-dot"></span> МАГНИТ · РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div><h1>Отчёты. <span>Без ручной рутины.</span></h1><p>Две Excel-выгрузки — один точный отчёт. Все расчёты, нормативы и проверки собраны в одном рабочем пространстве.</p><div class="hero-buttons"><button class="primary-button" data-go="stock">Сформировать товарный запас <span>→</span></button><button class="hero-secondary" data-go="critical">Критика за сегодня ↗</button></div><div class="hero-footer-note"><span>✓</span> Обработка файлов в браузере <span class="dot-divider">·</span> НТЗ уже подключён</div></div><div class="hero-illustration" aria-hidden="true"><div class="sheet-picture"><div class="sheet-bar"></div><div class="sheet-rows"><i></i><i></i><i></i><i></i></div><div class="sheet-badge">✓</div></div></div></div>
+          <div class="overview-strip" aria-label="Основные параметры системы">
+            <div class="overview-item"><span class="overview-icon">▣</span><div><strong>2 файла</strong><small>на один отчёт</small></div></div>
+            <div class="overview-item"><span class="overview-icon">⌁</span><div><strong id="homeEtalonCount">4 287</strong><small>уникальных кодов в Эталоне</small></div></div>
+            <div class="overview-item"><span class="overview-icon">✓</span><div><strong>Факт</strong><small>без пустых товарных строк</small></div></div>
+          </div>
+          <div class="section-caption"><div><span class="section-kicker">РАБОЧИЕ ИНСТРУМЕНТЫ</span><h2>Категории отчётности</h2></div><span>Выберите задачу</span></div>
           <div class="feature-grid">
             <button class="feature-card" data-go="stock"><div class="feature-icon stock-icon">▤</div><h3>Товарный запас</h3><p>Загрузка двух Excel, объединение по коду товара, расчёт УС и товарного запаса в днях.</p><div class="feature-footer"><span class="tag">Автоматизация</span><span class="arrow">↗</span></div></button>
             <button class="feature-card" data-go="returns"><div class="feature-icon gt-icon">⇄</div><h3>Возвраты ГТ</h3><p>Просмотр и поиск по реестру возвратов Гранд-Трейд, выгрузка отфильтрованных записей.</p><div class="feature-footer"><span class="tag neutral">Реестр</span><span class="arrow">↗</span></div></button>
@@ -45,7 +52,7 @@
         </section>
 
         <section class="view" id="view-stock">
-          <div class="eyebrow">КАТЕГОРИЯ / 01</div><div class="page-title"><div><h1>Отчёт по товарному запасу</h1><p>Ежедневный расчёт на основе двух обязательных документов Excel.</p></div><span class="status-chip">2 файла ежедневно</span></div>
+          <div class="eyebrow">КАТЕГОРИЯ / 01</div><div class="page-title"><div><h1>Отчёт по товарному запасу</h1><p>Ежедневный расчёт из двух файлов. Пустые позиции без фактических остатков и движения исключаются.</p></div><span class="status-chip">2 файла ежедневно</span></div>
           <div class="content-grid"><div class="content-main">
             <div class="panel"><div class="panel-title"><div class="step">1</div><div><h2>Загрузите исходные файлы</h2><p>Проверяются имя файла, формат и обязательные столбцы.</p></div></div>
               <div class="file-list">
@@ -59,7 +66,7 @@
               <div id="dateInfo" class="field-note">Дата автоматически определяется по столбцу «Дата операции».</div>
               <div class="button-row"><button class="primary-button" id="exportStock" disabled>Скачать готовый отчёт Excel <span>↓</span></button><button class="secondary-button" id="previewStock" disabled>Обновить расчёт</button></div><p class="field-note" id="stockExportHint" role="status">Загрузите две ежедневные таблицы. НК/КК и «Архив НТЗ» подключаются автоматически из встроенного справочника.</p><div class="button-row"><a class="secondary-button" id="stockDownloadLink" hidden>Если скачивание не началось — нажмите сюда ↓</a><button class="secondary-button" id="testDownload" type="button">Проверить скачивание (тест Excel)</button></div>
             </div>
-            <div class="panel preview-panel" id="reportPreviewPanel" hidden><div class="panel-title flat"><div><h2>Предпросмотр результата</h2><p id="previewSubtitle">Первые строки сформированного отчёта</p></div><input type="search" class="search-box" id="stockSearch" placeholder="Поиск по коду или названию"></div><div class="metrics" id="stockMetrics"></div><div class="table-scroll"><table class="data-table" id="stockTable"><thead></thead><tbody></tbody></table></div><div class="table-footer" id="stockFooter"></div></div>
+            <div class="panel preview-panel" id="reportPreviewPanel" hidden><div class="panel-title flat"><div><h2>Предпросмотр результата</h2><p id="previewSubtitle">Только позиции с фактическими показателями</p></div><input type="search" class="search-box" id="stockSearch" placeholder="Поиск по коду или названию"></div><div class="metrics" id="stockMetrics"></div><p class="verified-note" id="stockFactNote">В предпросмотре и экспорте показываются только позиции с реальными количественными показателями.</p><div class="table-scroll"><table class="data-table" id="stockTable"><thead></thead><tbody></tbody></table></div><div class="table-footer" id="stockFooter"></div></div>
           </div>
           <aside class="content-aside"><div class="side-panel"><div class="side-icon">◎</div><h3>Нормативы НК / КК</h3><p>НК и КК обязательно подтягиваются из листа «НТЗ». Основной НТЗ, «Архив НТЗ» и «код цветы» уже встроены в сайт. Ежедневно загружаются только два Excel.</p><input id="templateFile" type="file" accept=".xls,.xlsx" hidden><p class="field-note">Справочник НТЗ встроен; третий Excel не нужен.</p><p class="aside-status" id="templateStatus">НТЗ подключается автоматически</p><label class="field">Срез нормативов<select id="normSnapshot"><option value="main">Основной НТЗ</option></select></label><div class="field-note" id="archiveInfo">Архив НТЗ уже встроен.</div><button class="text-button" id="clearTemplate" hidden>Вернуть встроенный НТЗ</button></div>
             <div class="side-panel"><h3>Эталон товарных позиций</h3><p id="etalonSideStatus">Загрузка эталона…</p><button class="secondary-button full-width" data-go="etalon">Открыть справочник ТП →</button><p class="field-note">Основной режим: коды из Эталона, подтверждённые хотя бы одной ежедневной выгрузкой. Пустые позиции не создаются.</p></div><div class="side-panel soft-panel"><h3>Проверки перед выгрузкой</h3><div class="check-line" id="checkNames"><span class="check-indicator">○</span> Точные имена файлов</div><div class="check-line" id="checkHeaders"><span class="check-indicator">○</span> Проверка столбцов</div><div class="check-line" id="checkDate"><span class="check-indicator">○</span> Дата уровня сервиса</div><div class="check-line" id="checkNorms"><span class="check-indicator">○</span> Нормативы НК / КК</div><div class="check-line" id="checkEtalon"><span class="check-indicator">○</span> Эталон кодов ТП</div></div>
@@ -82,7 +89,7 @@
         </section>
 
         <section class="view" id="view-critical">
-          <div class="eyebrow">КАТЕГОРИЯ / 02</div><div class="page-title"><div><h1>Критика — день в день</h1><p>Отдельный отчёт из двух других Excel-файлов. Не зависит от даты товарного запаса.</p></div><span class="status-chip">Строго сегодня</span></div>
+          <div class="eyebrow">КАТЕГОРИЯ / 02</div><div class="page-title"><div><h1>Критика — день в день</h1><p>Отдельный отчёт за текущий день. Нужны только две сегодняшние выгрузки Excel.</p></div><span class="status-chip">Строго сегодня</span></div>
           <div class="panel"><div class="panel-title"><div class="step">1</div><div><h2>Отдельные выгрузки для критики</h2><p>Те же названия файлов, но данные должны относиться к сегодняшнему дню.</p></div></div>
             <div class="file-list">
               <label class="file-drop" id="criticalSaldoZone" for="criticalSaldoFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Критика — сальдово-оборотная ведомость</strong><small>rep_turnover_saldo_for_logist_excel.xlsx</small><em id="criticalSaldoStatus">Выбрать отдельный файл на сегодня</em></span><span class="file-action">Выбрать</span><input type="file" id="criticalSaldoFile" accept=".xlsx" hidden></label>
@@ -95,12 +102,12 @@
             <div class="button-row"><a class="secondary-button" id="criticalDownloadLink" hidden>Если скачивание не началось — скачать КРИТИКУ ↓</a><button class="secondary-button" id="testCriticalDownload" type="button">Проверить скачивание (тест Excel)</button></div>
           </div>
           <div class="panel"><div class="panel-title"><div class="step">2</div><div><h2>Нормативы НК / КК для Критики</h2><p>Справочник НТЗ и архив встроены автоматически — загружать третий файл не нужно.</p></div></div><div class="button-row"><input type="file" id="criticalTemplateFile" accept=".xls,.xlsx" hidden><span class="muted">Третий файл не требуется — НТЗ встроен в сайт.</span></div><p class="field-note" id="criticalTemplateStatus" role="status">Встроенный НТЗ подключается автоматически.</p><label class="field">Срез нормативов для Критики<select id="criticalNormSnapshot"><option value="main">Основной НТЗ</option></select></label><p class="field-note">Нормативы общие для обоих отчётов. Срез можно изменить без новой загрузки; архив входит в итоговый Excel.</p></div>
-          <div class="panel" id="criticalPanel" hidden><div class="panel-title flat"><div><h2>Критика</h2><p id="criticalSummary">Предпросмотр</p></div></div><div class="metrics" id="criticalMetrics"></div><div class="table-scroll"><table class="data-table" id="criticalTable"><thead></thead><tbody></tbody></table></div></div>
+          <div class="panel" id="criticalPanel" hidden><div class="panel-title flat"><div><h2>Критика</h2><p id="criticalSummary">Предпросмотр</p></div></div><div class="metrics" id="criticalMetrics"></div><p class="verified-note" id="criticalFactNote">Строки без фактических остатков и движения исключены.</p><div class="table-scroll"><table class="data-table" id="criticalTable"><thead></thead><tbody></tbody></table></div></div>
           <div class="info-row"><div class="info-symbol">ⓘ</div><p>Для обеих категорий используется общий справочник НТЗ. При скачивании основного отчёта подготовленная за сегодня критика включается в отдельный лист. Отсутствующие нормативы отмечаются и перечисляются в листе «Контроль».</p></div>
         </section>
 
         <section class="view" id="view-returns">
-          <div class="eyebrow">КАТЕГОРИЯ / 02</div><div class="page-title"><div><h1>Отчёт возвраты ГТ</h1><p>Рабочий реестр возвратов Гранд-Трейд с поиском по всем полям.</p></div><span class="status-chip">Excel-реестр</span></div>
+          <div class="eyebrow">КАТЕГОРИЯ / 03</div><div class="page-title"><div><h1>Отчёт возвраты ГТ</h1><p>Рабочий реестр возвратов Гранд-Трейд с поиском по всем полям.</p></div><span class="status-chip">Excel-реестр</span></div>
           <div class="panel"><div class="panel-title"><div class="step">1</div><div><h2>Загрузите реестр</h2><p>Поддерживаются Excel .xlsx и .xls, проверяется структура таблицы возвратов.</p></div></div><label class="file-drop" id="gtZone" for="gtFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Отчёт возвраты ГТ</strong><small>Дата приёмки, код ТП, претензия, объём, статус</small><em id="gtStatus">Нажмите или перетащите файл</em></span><span class="file-action">Выбрать</span><input type="file" id="gtFile" accept=".xlsx,.xls" hidden></label></div>
           <div class="panel" id="gtPreviewPanel" hidden><div class="panel-title flat"><div><h2>Реестр возвратов</h2><p id="gtRowCount">0 записей</p></div><input type="search" id="gtSearch" class="search-box" placeholder="Поиск по товару, заявке, машине..."></div><div class="table-scroll"><table class="data-table" id="gtTable"><thead></thead><tbody></tbody></table></div><div class="button-row"><button class="primary-button" id="exportGT">Скачать результат поиска <span>↓</span></button><span class="muted">Исходная таблица не изменяется</span></div><div class="button-row"><a class="secondary-button" id="gtDownloadLink" hidden>Повторить скачивание возвратов ↓</a></div></div>
         </section>
@@ -108,7 +115,7 @@
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>
           <div class="panel"><h2 class="rules-heading">Откуда берутся данные</h2><div class="rule-map"><div><span class="rule-number">01</span><strong>Сальдово-оборотная ведомость</strong><p>Код товара, название, начальное и конечное количество.</p></div><span class="map-separator">+</span><div><span class="rule-number">02</span><strong>Уровень сервиса</strong><p>Заказ, импорт, отгрузка, Vicherk, дата операции, тип отбора.</p></div><span class="map-separator">→</span><div><span class="rule-number">03</span><strong>Итоговый Excel</strong><p>Только коды из ежедневных Excel; Эталон — справочник для сверки, НТЗ — нормативы, расчёт УС, ТЗ в днях и отклонений.</p></div></div>
             <div class="formula-list"><div><strong>УС к заказу</strong><code>Отгрузка ÷ Заказ</code></div><div><strong>УС к импорту</strong><code>Отгрузка ÷ Импорт</code></div><div><strong>Фактический ТЗ, дни</strong><code>Конечное количество ÷ Отгрузка</code></div><div><strong>ТЗ / Заказ</strong><code>Конечное количество ÷ Заказ</code></div><div><strong>Целевой ТЗ Комментарии</strong><code>Фактический ТЗ − НК</code></div><div><strong>Максимальный ТЗ Комментарии</strong><code>Фактический ТЗ − КК</code></div></div>
-            <p class="rule-note">Коды, отсутствующие в обеих ежедневных выгрузках, не попадают ни в один лист ежедневного отчёта. Если товар есть только в одном исходном документе, недостающие показатели остаются пустыми, а не нулевыми. Если документ содержит позицию, но знаменатель равен нулю, в числовом коэффициенте используется 0. Если «Заказ» равен 0, в колонках комментариев — «Без расхода». Если для товара отсутствует норматив в НТЗ, поле остаётся незаполненным и отображается предупреждение «НЕТ В НТЗ».</p>
+            <p class="rule-note">Коды, отсутствующие в обеих ежедневных выгрузках, и позиции с нулевыми фактическими показателями не попадают в ежедневный отчёт. Если товар есть только в одном исходном документе, недостающие показатели остаются пустыми, а не нулевыми. Нулевое значение учитывается только когда оно действительно присутствует в исходных данных; пустое значение остаётся пустым. При подтверждённом нулевом знаменателе коэффициент отображается как 0. Если «Заказ» равен 0, в колонках комментариев — «Без расхода». Если для товара отсутствует норматив в НТЗ, поле остаётся незаполненным и отображается предупреждение «НЕТ В НТЗ».</p>
           </div><div class="info-row"><div class="info-symbol">🔒</div><p>GitHub Pages публикует сам сайт, но не загруженные в браузер Excel-файлы. Не добавляйте коммерческие выгрузки в репозиторий. Встроенные Эталон и НТЗ с архивом доступны посетителям опубликованного сайта. Ежедневные Excel обрабатываются только в вашем браузере. Не публикуйте такую сборку, если справочники конфиденциальны.</p></div>
         </section>
       </main>
