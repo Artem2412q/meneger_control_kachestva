@@ -84,31 +84,58 @@ function parseService(book) {
   }
   return {items:out, dates, rcs:[...rcs]};
 }
-function parseTemplate(book) {
-  const candidates=book.SheetNames;
-  if (!candidates.includes('НТЗ')) throw new Error('В образце не найден лист «НТЗ» с нормативами.');
-  const rows=getRows(book,'НТЗ');
-  const header=mapHeaders(rows[0]);
-  const codeIdx=header['код товара'];
-  const nkIdx=header['нк тз для рц'];
-  const kkIdx=header['кк тз для рц'];
-  if (codeIdx==null||nkIdx==null||kkIdx==null)throw new Error('Лист «НТЗ» должен содержать столбцы «Код товара», «НК ТЗ для РЦ», «КК ТЗ для РЦ».');
-  const norms=Object.create(null);
-  for (let i=1;i<rows.length;i++) {
-    const row=rows[i];if(!row)continue;
-    const code=productCode(raw(row[codeIdx]));if(!code)continue;
-    norms[code]={name:cellText(row[1]),nk:Core.num(raw(row[nkIdx])),kk:Core.num(raw(row[kkIdx]))};
+function archiveDate(value){
+  if(typeof value==='number'){
+    const d=XLSX.SSF.parse_date_code(value);if(d)return `${String(d.d).padStart(2,'0')}.${String(d.m).padStart(2,'0')}.${d.y}`;
   }
-  const dated=candidates.filter(name=>/^\d{2}\.\d{2}\.\d{4}$/.test(name)).sort((a,b)=>Core.parseRuDate(b).localeCompare(Core.parseRuDate(a)));
-  const catalog=[];
-  if(dated.length) {
-    const daily=getRows(book,dated[0]);
-    for(let i=1;i<daily.length;i++) {
-      const row=daily[i];if(!row)continue;
-      const code=productCode(raw(row[0]));if(code)catalog.push(code);
+  return serviceDate(value);
+}
+function normRow(row,offset){
+  const code=productCode(raw(row[offset]));if(!code)return null;
+  const nk=raw(row[offset+2]),kk=raw(row[offset+3]);
+  const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;};
+  return {code,name:cellText(row[offset+1]),nk:numeric(nk),kk:numeric(kk)};
+}
+function parseTemplate(book) {
+  if (!book.SheetNames.includes('НТЗ')) throw new Error('В образце не найден лист «НТЗ» с нормативами.');
+  const rows=getRows(book,'НТЗ');
+  const h=mapHeaders(rows[0]);
+  if(h['код товара']==null||h['нк тз для рц']==null||h['кк тз для рц']==null)
+    throw new Error('Лист «НТЗ» должен содержать «Код товара», «НК ТЗ для РЦ», «КК ТЗ для РЦ».');
+  const norms=Object.create(null);
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];if(!r)continue;
+    const code=productCode(raw(r[h['код товара']]));if(!code)continue;
+    const n=raw(r[h['нк тз для рц']]),k=raw(r[h['кк тз для рц']]);
+    norms[code]={name:cellText(r[1]),nk:n==null||n===''?null:Core.num(n),kk:k==null||k===''?null:Core.num(k)};
+  }
+  const mainDate=archiveDate(raw(rows[0][4]))||'НТЗ (основной)';
+  const snapshots=[];
+  if(book.SheetNames.includes('Архив НТЗ')){
+    const ar=getRows(book,'Архив НТЗ'),hdr=ar[0]||[];
+    for(let i=0;i<hdr.length-3;i+=6){
+      if(cellText(hdr[i]).toLowerCase()!=='код товара')continue;
+      const archive=Object.create(null);
+      for(let j=1;j<ar.length;j++){
+        const row=ar[j];if(!row)continue;
+        const rec=normRow(row,i);if(rec)archive[rec.code]={name:rec.name,nk:rec.nk,kk:rec.kk};
+      }
+      snapshots.push({date:archiveDate(raw(hdr[i+4]))||`Архив ${snapshots.length+1}`,norms:archive});
     }
   }
-  return {norms,catalog:[...new Set(catalog)],catalogSheet:dated[0]||null};
+  const dated=book.SheetNames.filter(name=>/^\d{2}\.\d{2}\.\d{4}$/.test(name))
+    .sort((a,b)=>Core.parseRuDate(b).localeCompare(Core.parseRuDate(a)));
+  const catalog=[];
+  if(dated.length){const daily=getRows(book,dated[0]);for(let i=1;i<daily.length;i++){
+    const row=daily[i];if(!row)continue;const code=productCode(raw(row[0]));if(code)catalog.push(code);
+  }}
+  const flowerCodes=[];
+  if(book.SheetNames.includes('код цветы')){
+    const codes=getRows(book,'код цветы');
+    for(let i=1;i<codes.length;i++){const c=productCode(raw(codes[i]?.[0]));if(c)flowerCodes.push(c);}
+  }
+  return {norms,mainDate,snapshots,flowerCodes:[...new Set(flowerCodes)],
+    catalog:[...new Set(catalog)],catalogSheet:dated[0]||null};
 }
 function parseGT(book) {
   const rows=getRows(book);

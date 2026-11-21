@@ -3,10 +3,10 @@
   const Core = window.MagnetCore;
   const $ = id => document.getElementById(id);
   const state = {
-    files: {saldo:null, service:null, gt:null},
-    sources:null, template:null, report:null, gt:null
+    files: {saldo:null, service:null, gt:null,criticalSaldo:null,criticalService:null},
+    sources:null, template:null, report:null, gt:null,criticalSources:null,criticalReport:null
   };
-  const STORAGE_KEY = 'magnit-rc-v1-reference';
+  const STORAGE_KEY = 'magnit-rc-v2-reference';
   const moneyNumber = n => Number.isFinite(Number(n)) ? Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2}) : '—';
   let toastTimeout;
 
@@ -37,7 +37,7 @@
     setCheck('checkNames',names,'Точные имена файлов');
     setCheck('checkHeaders',Boolean(state.sources),'Проверка столбцов');
     setCheck('checkDate',Boolean(state.report),'Дата уровня сервиса');
-    setCheck('checkNorms',Boolean(state.template && Object.keys(state.template.norms).length),'Нормативы НК / КК');
+    setCheck('checkNorms',Boolean(state.template && Object.keys(Core.selectedNorms(state.template,$('normSnapshot').value)).length),'Нормативы НК / КК');
     $('processStock').disabled=!names;
   }
   function setCheck(id,ok,text) {
@@ -121,15 +121,16 @@
       state.report=null;$('exportStock').disabled=true;$('reportPreviewPanel').hidden=true;
       return toast(`Дата ${date} не найдена в «Уровне сервиса». Выберите дату из списка обнаруженных.`,true);
     }
-    const payload={...state.sources, norms:state.template?.norms||{},catalog:state.template?.catalog||[]};
+    const payload={...state.sources, norms:Core.selectedNorms(state.template,$('normSnapshot').value),catalog:state.template?.catalog||[],flowerCodes:state.template?.flowerCodes||[]};
     state.report=Core.buildReport(payload,{date,mode:$('reportMode').value});
-    $('exportStock').disabled=!state.report.records.length;
+    $('exportStock').disabled=!state.report.records.length||!state.template;
     $('reportPreviewPanel').hidden=false;
     $('previewSubtitle').textContent=`${state.report.records.length} позиций · ${date} · режим «${modeLabel(state.report.stats.appliedMode)}»`;
     renderStockTable();updateChecks();
     if(state.report.stats.appliedMode!==$('reportMode').value) toast('Образец не загружен: временно применён отбор овощей и фруктов.');
+    if(state.report.stats.normMissing)toast(`Внимание: ${state.report.stats.normMissing} товаров без НК/КК в выбранном НТЗ. При выгрузке они будут явно отмечены.`,true);
   }
-  function modeLabel(mode){return {reference:'По списку из образца',fresh:'Овощи и фрукты',all:'Все товары'}[mode]||mode;}
+  function modeLabel(mode){return {reference:'По списку из образца',fresh:'Овощи и фрукты',all:'Все товары',flowers:'Код цветы'}[mode]||mode;}
   ['reportMode','reportDate'].forEach(id=>$(id).addEventListener('change',recalculateReport));
   $('previewStock').addEventListener('click',recalculateReport);
   $('stockSearch').addEventListener('input',renderStockTable);
@@ -148,7 +149,7 @@
       const small=document.createElement('small');small.textContent=label;
       box.append(val,small);$('stockMetrics').append(box);
     });
-    const headers=['Код товара','Название','Нач. кол-во','Заказ','Импорт','Отгрузка','УС / заказ','УС / импорт','Vicherk','Кон. кол-во','НК','КК','ТЗ, дни','ТЗ / заказ','Откл. НК','Откл. КК'];
+    const headers=['Код товара','Название','Нач. кол-во','Заказ','Импорт','Отгрузка','УС / заказ','УС / импорт','Vicherk','Кон. кол-во','НК (из НТЗ)','КК (из НТЗ)','ТЗ, дни','ТЗ / заказ','Откл. НК','Откл. КК'];
     renderHead($('stockTable'),headers);
     const query=$('stockSearch').value.trim().toLowerCase();
     const filtered=query?records.filter(r=>r.code.includes(query)||r.name.toLowerCase().includes(query)):records;
@@ -156,7 +157,7 @@
     filtered.slice(0,80).forEach(r=>{
       const vals=[r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.vich,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment];
       const tr=document.createElement('tr');
-      vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent= i<=1 ? String(v):typeof v==='number'?moneyNumber(v):v==null?'—':String(v);if(i>=14&&typeof v==='number'&&v>0)td.className='caution';tr.append(td);});
+      vals.forEach((v,i)=>{const td=document.createElement('td');td.textContent= i<=1 ? String(v):typeof v==='number'?moneyNumber(v):v==null?'НЕТ В НТЗ':String(v);if((i===10||i===11)&&v===null)td.className='caution';if(i>=14&&typeof v==='number'&&v>0)td.className='caution';tr.append(td);});
       body.append(tr);
     });
     $('stockFooter').textContent=`Показано ${Math.min(filtered.length,80)} из ${filtered.length}. Экспорт включает все ${records.length} позиций, не только первые строки предпросмотра.`;
@@ -169,57 +170,33 @@
   }
   function exportStock() {
     if(!state.report)return toast('Сначала выполните расчёт.',true);
+    if(!state.template)return toast('Сначала загрузите справочник НТЗ.',true);
     try {
-      const records=state.report.records, day=state.report.date;
-      const book=XLSX.utils.book_new();
-      const matrix=[Core.HEADERS];
-      for(const r of records)matrix.push([r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.vich,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment]);
-      const sheet=XLSX.utils.aoa_to_sheet(matrix);
-      sheet['!cols']=[{wch:16},{wch:64},{wch:18},{wch:17},{wch:17},{wch:17},{wch:22},{wch:23},{wch:16},{wch:20},{wch:22},{wch:22},{wch:20},{wch:16},{wch:25},{wch:28}];
-      sheet['!autofilter']={ref:`A1:P${matrix.length}`};
-      const putFormula=(row,col,formula,value)=>{
-        const addr=XLSX.utils.encode_cell({r:row-1,c:col});
-        sheet[addr]={t:typeof value==='string'?'s':'n',f:formula,v:value};
-        if(typeof value==='number')sheet[addr].z=col===6||col===7?'0.00%':'0.00';
-      };
-      records.forEach((r,i)=>{
-        const n=i+2;
-        putFormula(n,6,`IFERROR(F${n}/D${n},0)`,r.usOrder);
-        putFormula(n,7,`IFERROR(F${n}/E${n},0)`,r.usImport);
-        putFormula(n,12,`IFERROR(J${n}/F${n},0)`,r.actualDays);
-        putFormula(n,13,`IFERROR(J${n}/D${n},0)`,r.orderDays);
-        putFormula(n,14,`IF(D${n}=0,"Без расхода",IF(K${n}="","",M${n}-K${n}))`,r.targetComment);
-        putFormula(n,15,`IF(D${n}=0,"Без расхода",IF(L${n}="","",M${n}-L${n}))`,r.maxComment);
-      });
-      XLSX.utils.book_append_sheet(book,sheet,day);
-      const normRows=[['Код товара','Наименование товара','НК\nТЗ для РЦ','КК\nТЗ для РЦ']];
-      for(const [code,n] of Object.entries(state.template?.norms||{}))normRows.push([code,n.name||'',n.nk,n.kk]);
-      const normSheet=XLSX.utils.aoa_to_sheet(normRows);normSheet['!cols']=[{wch:16},{wch:61},{wch:18},{wch:18}];
-      XLSX.utils.book_append_sheet(book,normSheet,'НТЗ');
-      const usRows=[['Код товара','Сумма по полю Заказ','Сумма по полю Импорт','Сумма по полю Отгрузка','Сумма по полю Vicherk']];
-      for(const item of Object.values(state.sources.service).filter(x=>x.date===day).sort((a,b)=>a.code.localeCompare(b.code)))usRows.push([item.code,item.order,item.imp,item.ship,item.vich]);
-      const usSheet=XLSX.utils.aoa_to_sheet(usRows);usSheet['!cols']=[{wch:18},{wch:22},{wch:22},{wch:24},{wch:23}];
-      XLSX.utils.book_append_sheet(book,usSheet,'УС');
-      const controls=[['Проверка','Значение / товар','Пояснение'],
-        ['Дата отчёта',day,'Определена по уровню сервиса'],
-        ['Режим отбора',modeLabel(state.report.stats.appliedMode),'Состав товаров будет уточняться по вашим правилам'],
-        ['Товарных позиций',records.length,'Объединение по коду товара'],
-        ['Позиции без норматива',state.report.stats.normMissing,'НК/КК для этих кодов оставлены пустыми'],
-        ['Позиции без сальдовой ведомости',state.report.stats.saldoMissing,'Для таких кодов остатки условно равны нулю'],
-        ['Повторяющиеся коды в сальдовой ведомости',(state.sources.meta.duplicateSaldo||[]).length,'При повторе оставлена последняя строка — требует проверки']];
-      for(const r of records){if(r.missingNorm) controls.push(['Не найден норматив',r.code,r.name]);if(r.missingSaldo)controls.push(['Не найден в ведомости',r.code,r.name]);}
-      const ctl=XLSX.utils.aoa_to_sheet(controls);ctl['!cols']=[{wch:36},{wch:30},{wch:73}];XLSX.utils.book_append_sheet(book,ctl,'Контроль');
-      const [d,m,y]=day.split('.');downloadWorkbook(book,`Отчёт по товарному запасу ${d}.${m}.${y}.xlsx`);
-      toast('Excel сформирован. Проверьте лист «Контроль» перед использованием.');
-    } catch(e){toast(e.message,true);}
+      const critical=state.criticalReport?.date===Core.toRuDate(Core.todayIso())?state.criticalReport:null;
+      const sheets=window.MagnitReport.prepareSheets({stock:state.report,critical,
+        stockSources:state.sources,template:state.template,snapshot:$('normSnapshot').value});
+      window.MagnitExcel.save(sheets,`Отчёт по товарному запасу ${state.report.date}.xlsx`);
+      toast(`Готовый Excel: НТЗ, полный архив, коды цветов, «Цветы», «Контроль»${critical?', Критика':''}.`);
+    }catch(e){toast(e.message,true);}
   }
   $('exportStock').addEventListener('click',exportStock);
 
   function updateTemplateStatus() {
-    const present=!!state.template&&Object.keys(state.template.norms).length>0;
-    $('templateStatus').textContent=present?`Сохранено норм: ${Object.keys(state.template.norms).length} · товары образца: ${state.template.catalog.length} · лист: ${state.template.catalogSheet||'не найден'}`:'Справочник ещё не загружен';
+    const template=state.template;
+    const present=!!template&&Object.keys(template.norms||{}).length>0;
+    const select=$('normSnapshot'),oldValue=select.value;
+    select.replaceChildren(new Option(`Основной НТЗ (${template?.mainDate||'без даты'})`,'main'));
+    for(let i=0;i<(template?.snapshots||[]).length;i++){
+      const snapshot=template.snapshots[i];
+      select.append(new Option(`Архив ${snapshot.date} (${Object.keys(snapshot.norms||{}).length} кодов)`,String(i)));
+    }
+    if([...select.options].some(o=>o.value===oldValue))select.value=oldValue;
+    select.disabled=!present;
+    $('templateStatus').textContent=present?`НТЗ: ${Object.keys(template.norms).length} норм · ${template.catalog.length} кодов образца · цветов: ${template.flowerCodes?.length||0}`:'Справочник ещё не загружен';
+    $('archiveInfo').textContent=present?`Архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Выбранный срез полностью включается в итоговый Excel.`:'Архив НТЗ будет доступен после импорта образца.';
     $('clearTemplate').hidden=!present;updateChecks();
   }
+  $('normSnapshot').addEventListener('change',()=>{if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();updateChecks();});
   try {
     const stored=localStorage.getItem(STORAGE_KEY);if(stored)state.template=JSON.parse(stored);
   }catch(e){console.warn('localStorage not available',e);}
@@ -230,18 +207,99 @@
     $('templateStatus').textContent='Чтение справочника...';
     try {
       const buffer=await file.arrayBuffer();
-      state.template=await runWorker('template',{buffer});
+      state.template=Core.mergeNormHistory(state.template,await runWorker('template',{buffer}));
       try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state.template));}catch(err){toast('Справочник загружен, но браузер не разрешил сохранить его на будущее.');}
-      updateTemplateStatus();if(state.sources)recalculateReport();
-      toast('Нормативы НТЗ и коды товаров из образца успешно загружены.');
+      updateTemplateStatus();if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();
+      toast('Импортированы НТЗ, полный архив НТЗ и коды цветов.');
     }catch(err){updateTemplateStatus();toast(err.message,true);}
     e.target.value='';
   });
   $('clearTemplate').addEventListener('click',()=>{
     state.template=null;
     try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
-    updateTemplateStatus();if(state.sources)recalculateReport();
+    updateTemplateStatus();if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();
+    $('exportStock').disabled=true;$('exportCritical').disabled=true;
     toast('Локальный справочник очищен.');
+  });
+
+  // Независимая «Критика»: две новые выгрузки, дата только локальная сегодня.
+  function criticalToday(){return Core.toRuDate(Core.todayIso());}
+  $('todayDateLabel').textContent=criticalToday();
+  function criticalName(kind){return kind==='criticalSaldo'?'rep_turnover_saldo_for_logist_excel':'rpt_levelservice_api.level_service_hd_gk_eday_hm';}
+  function updateCriticalButton(){
+    $('processCritical').disabled=!validateName(state.files.criticalSaldo,criticalName('criticalSaldo'))||
+      !validateName(state.files.criticalService,criticalName('criticalService'));
+  }
+  function invalidateCritical(){
+    state.criticalSources=null;state.criticalReport=null;
+    $('exportCritical').disabled=true;$('criticalPanel').hidden=true;updateCriticalButton();
+  }
+  function setCriticalFile(kind,file){
+    if(!file)return;state.files[kind]=file;invalidateCritical();
+    const zone=$(kind==='criticalSaldo'?'criticalSaldoZone':'criticalServiceZone');
+    const status=$(kind==='criticalSaldo'?'criticalSaldoStatus':'criticalServiceStatus');
+    const valid=validateName(file,criticalName(kind));
+    zone.classList.toggle('valid',valid);zone.classList.toggle('invalid',!valid);
+    status.textContent=valid?`${file.name} · ${(file.size/1024/1024).toFixed(2)} МБ`:`Неверное имя/формат: ${file.name}`;
+    if(!valid)toast('Для критики требуется файл .xlsx с точным названием.',true);
+    updateCriticalButton();
+  }
+  for(const [kind,inputId,zoneId] of [['criticalSaldo','criticalSaldoFile','criticalSaldoZone'],['criticalService','criticalServiceFile','criticalServiceZone']]){
+    const input=$(inputId),zone=$(zoneId);
+    input.addEventListener('change',()=>setCriticalFile(kind,input.files?.[0]));
+    zone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}});
+    ['dragenter','dragover'].forEach(event=>zone.addEventListener(event,e=>{e.preventDefault();zone.classList.add('dragging');}));
+    ['dragleave','drop'].forEach(event=>zone.addEventListener(event,e=>{e.preventDefault();zone.classList.remove('dragging');}));
+    zone.addEventListener('drop',e=>setCriticalFile(kind,e.dataTransfer?.files?.[0]));
+  }
+  function recalculateCritical(){
+    if(!state.criticalSources)return;
+    const date=criticalToday();
+    if(!state.criticalSources.meta.dates[date]){
+      state.criticalReport=null;$('criticalPanel').hidden=true;$('exportCritical').disabled=true;
+      return toast(`Критика строго за сегодня (${date}). В выгрузке уровня сервиса нет такой даты.`,true);
+    }
+    const payload={...state.criticalSources,norms:Core.selectedNorms(state.template,$('normSnapshot').value),
+      catalog:state.template?.catalog||[]};
+    state.criticalReport=Core.buildCriticalReport(payload,{today:Core.todayIso(),mode:'fresh'});
+    $('exportCritical').disabled=!state.template||!state.criticalReport.records.length;
+    $('criticalPanel').hidden=false;
+    const {stats,records}=state.criticalReport;
+    $('criticalSummary').textContent=`Сегодня ${date} · ${records.length} товаров (отбор овощи/фрукты — предварительный)`;
+    $('criticalMetrics').replaceChildren();
+    for(const [value,name] of [[stats.total,'Товарных позиций'],[stats.totalOrder,'Заказ'],[stats.overMax,'Выше КК'],[stats.normMissing,'Нормы не найдены']]){
+      const box=document.createElement('div');box.className='metric';
+      const strong=document.createElement('strong');strong.textContent=moneyNumber(value);
+      const small=document.createElement('small');small.textContent=name;box.append(strong,small);$('criticalMetrics').append(box);
+    }
+    renderHead($('criticalTable'),Core.HEADERS.filter((_,i)=>i!==8));
+    const body=$('criticalTable').querySelector('tbody');body.replaceChildren();
+    records.slice(0,70).forEach(r=>{
+      const vals=[r.code,r.name,r.start,r.order,r.imp,r.ship,r.usOrder,r.usImport,r.ending,r.nk,r.kk,r.actualDays,r.orderDays,r.targetComment,r.maxComment];
+      const tr=document.createElement('tr');vals.forEach((v,i)=>{
+        const td=document.createElement('td');td.textContent=v==null?'НЕТ В НТЗ':typeof v==='number'?moneyNumber(v):String(v);
+        if((i===9||i===10)&&v===null)td.classList.add('caution');tr.append(td);
+      });body.append(tr);
+    });
+    if(stats.normMissing)toast(`Критика: отсутствуют НК/КК для ${stats.normMissing} товаров. Проверьте «Контроль».`,true);
+  }
+  $('processCritical').addEventListener('click',async()=>{
+    if(!validateName(state.files.criticalSaldo,criticalName('criticalSaldo'))||!validateName(state.files.criticalService,criticalName('criticalService')))
+      return toast('Выберите две отдельные корректные выгрузки для критики.',true);
+    const button=$('processCritical');button.disabled=true;button.textContent='Проверяем критику…';
+    try{
+      const [saldo,service]=await Promise.all([state.files.criticalSaldo.arrayBuffer(),state.files.criticalService.arrayBuffer()]);
+      state.criticalSources=await runWorker('stocks',{saldo,service});
+      recalculateCritical();
+    }catch(e){invalidateCritical();toast(e.message,true);}finally{button.textContent='Проверить критику за сегодня →';updateCriticalButton();}
+  });
+  $('exportCritical').addEventListener('click',()=>{
+    if(!state.criticalReport||state.criticalReport.date!==criticalToday())return toast('Критика устарела. Загрузите текущие выгрузки.',true);
+    try{
+      const sheets=window.MagnitReport.prepareSheets({critical:state.criticalReport,template:state.template,snapshot:$('normSnapshot').value});
+      window.MagnitExcel.save(sheets,`Критика ${state.criticalReport.date}.xlsx`);
+      toast('Критика выгружена с нормативами НТЗ и архивом.');
+    }catch(e){toast(e.message,true);}
   });
 
   async function importGT(file) {

@@ -44,7 +44,7 @@
       nk, kk, actualDays: roundForPreview(actualDays), orderDays: roundForPreview(orderDays),
       targetComment: noOrder ? 'Без расхода' : nk === null ? '' : actualDays - nk,
       maxComment: noOrder ? 'Без расхода' : kk === null ? '' : actualDays - kk,
-      missingNorm: !rule, missingSaldo: !saldo, hasService: Boolean(service)
+      missingNorm: nk === null || kk === null, missingSaldo: !saldo, hasService: Boolean(service)
     };
   }
   function buildReport(payload, { date, mode = 'reference' } = {}) {
@@ -52,6 +52,7 @@
     const perDate = payload.service || {};
     const catalog = payload.catalog || [];
     const catalogSet = new Set(catalog);
+    const flowerSet=new Set(payload.flowerCodes||[]);
     const norms = payload.norms || {};
     const selected = Object.create(null);
     for (const code of Object.keys(saldo)) selected[code] = 1;
@@ -69,6 +70,7 @@
       const s = saldo[code]; const u = serviceAtDate[code];
       if (appliedMode === 'reference' && !catalogSet.has(code)) continue;
       if (appliedMode === 'fresh' && !isFresh(s, u, code, catalog)) continue;
+      if (appliedMode === 'flowers' && !flowerSet.has(code)) continue;
       records.push(makeRecord(code, s, u, norms[code]));
     }
     records.sort((a,b) => a.name.localeCompare(b.name, 'ru') || a.code.localeCompare(b.code));
@@ -94,5 +96,34 @@
     if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso||'';
     const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`;
   }
-  return { HEADERS, normalize, num, buildReport, makeRecord, parseRuDate, toRuDate, isFresh };
+  function selectedNorms(template, index){
+    if(!template) return {};
+    if(index==='main'||!index)return template.norms||{};
+    const numIndex=Number(index);
+    return template.snapshots?.[numIndex]?.norms || {};
+  }
+  function todayIso(now=new Date()){
+    const d=String(now.getDate()).padStart(2,'0'),m=String(now.getMonth()+1).padStart(2,'0');
+    return `${now.getFullYear()}-${m}-${d}`;
+  }
+  function buildCriticalReport(payload,{today=todayIso(),mode='fresh'}={}){
+    const date=toRuDate(today);
+    if(!Object.values(payload.service||{}).some(item=>item.date===date))
+      throw new Error(`Критика строго за сегодня (${date}). В уровне сервиса нет этой даты.`);
+    return buildReport(payload,{date,mode});
+  }
+  function mergeNormHistory(previous,next){
+    if(!previous)return next;
+    if(!next)return previous;
+    const map=new Map();
+    for(const s of previous.snapshots||[])if(s?.date)map.set(s.date,s);
+    if(previous.mainDate&&previous.mainDate!==next.mainDate&&previous.norms)
+      map.set(previous.mainDate,{date:previous.mainDate,norms:previous.norms});
+    for(const s of next.snapshots||[])if(s?.date)map.set(s.date,s);
+    map.delete(next.mainDate);
+    return {...next,snapshots:[...map.values()].sort((a,b)=>String(parseRuDate(a.date)||a.date).localeCompare(String(parseRuDate(b.date)||b.date))),
+      flowerCodes:next.flowerCodes?.length?next.flowerCodes:(previous.flowerCodes||[]),
+      catalog:next.catalog?.length?next.catalog:(previous.catalog||[])};
+  }
+  return { HEADERS, normalize, num, buildReport, makeRecord, parseRuDate, toRuDate, isFresh,selectedNorms,todayIso,mergeNormHistory,buildCriticalReport };
 });
