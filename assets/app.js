@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const state = {
     files: {saldo:null, service:null, gt:null,criticalSaldo:null,criticalService:null},
-    sources:null, template:null, report:null, gt:null,criticalSources:null,criticalReport:null,
+    sources:null, template:window.MagnitNorms||null, report:null, gt:null,criticalSources:null,criticalReport:null,
     etalon:window.MagnitEtalon||null
   };
   const STORAGE_KEY = 'magnit-rc-v2-reference';
@@ -31,7 +31,7 @@
     const node=$('stockExportHint');if(!node)return;
     if(!state.files.saldo||!state.files.service)node.textContent='Шаг 1: выберите обе исходные таблицы Excel.';
     else if(!state.sources)node.textContent='Шаг 2: нажмите «Проверить и объединить файлы» и дождитесь окончания обработки.';
-    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Шаг 3: в правом блоке «Нормативы НК / КК» загрузите образец с листом «НТЗ». Без него скачивание заблокировано — нормативы нельзя выдумывать.';
+    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.5 и перезагрузите страницу (Ctrl+F5).';
     else if(!state.report?.records?.length)node.textContent='Проверьте дату отчёта и состав товарных позиций: пока нет строк для выгрузки.';
     else node.textContent='Отчёт готов. Нажмите «Скачать готовый отчёт Excel». Если браузер блокирует загрузку — появится резервная ссылка.';
   }
@@ -248,7 +248,7 @@
 
   function exportStock() {
     if(!state.report)return toast('Сначала выполните расчёт.',true);
-    if(!state.template)return toast('Сначала загрузите справочник НТЗ.',true);
+    if(!state.template)return toast('Встроенный НТЗ не загрузился. Проверьте файл assets/norms.js на сайте.',true);
     try {
       const critical=state.criticalReport?.date===Core.toRuDate(Core.todayIso())?state.criticalReport:null;
       const sheets=window.MagnitReport.prepareSheets({stock:state.report,critical,
@@ -281,15 +281,16 @@
     const criticalSelect=$('criticalNormSnapshot');
     criticalSelect.replaceChildren(...[...select.options].map(o=>new Option(o.text,o.value)));
     criticalSelect.value=select.value;criticalSelect.disabled=!present;
-    $('templateStatus').textContent=present?`НТЗ: ${Object.keys(template.norms).length} норм · ${template.catalog.length} кодов образца · цветов: ${template.flowerCodes?.length||0}`:'Справочник ещё не загружен';
-    $('criticalTemplateStatus').textContent=present?`НТЗ подключён: ${Object.keys(Core.selectedNorms(template,select.value)).length} кодов; выбран ${select.options[select.selectedIndex].text}.`:'НТЗ не загружен. Выберите файл с листом «НТЗ» прямо здесь или в разделе «Товарный запас».';
-    $('archiveInfo').textContent=present?`Архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Выбранный срез полностью включается в итоговый Excel.`:'Архив НТЗ будет доступен после импорта образца.';
-    $('clearTemplate').hidden=!present;updateChecks();updateExportHint();updateCriticalExportState();
+    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.5).';
+    $('criticalTemplateStatus').textContent=present?`НТЗ подключён автоматически: ${Object.keys(Core.selectedNorms(template,select.value)).length} кодов; ${select.options[select.selectedIndex].text}. Ежедневно загружайте только ДВА Excel.`:'Не удалось прочитать встроенный НТЗ. Проверьте публикацию assets/norms.js.';
+    $('archiveInfo').textContent=present?`Встроенный архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Архив войдёт в итоговый Excel.`:'Не удалось подключить архив НТЗ.';
+    $('clearTemplate').hidden=!template?.userTemplate;updateChecks();updateExportHint();updateCriticalExportState();
   }
   $('normSnapshot').addEventListener('change',()=>{if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();updateChecks();updateTemplateStatus();});
   $('criticalNormSnapshot').addEventListener('change',()=>{ $('normSnapshot').value=$('criticalNormSnapshot').value; $('normSnapshot').dispatchEvent(new Event('change')); });
   try {
-    const stored=localStorage.getItem(STORAGE_KEY);if(stored)state.template=JSON.parse(stored);
+    const stored=localStorage.getItem(STORAGE_KEY);
+    if(stored){const saved=JSON.parse(stored);if(saved?.userTemplate&&Object.keys(saved.norms||{}).length)state.template=Core.mergeNormHistory(window.MagnitNorms||null,saved);}
   }catch(e){console.warn('localStorage not available',e);}
   updateTemplateStatus();
   // One shared NТЗ import is available from BOTH the stock and the critical page.
@@ -300,12 +301,13 @@
     const buffer=await file.arrayBuffer();
     const result=await runWorker('template',{buffer});
     state.template=Core.mergeNormHistory(state.template,result);
+    state.template.userTemplate=true;
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state.template));}
     catch(err){toast('НТЗ загружен, но браузер не разрешил сохранить его на будущее.',true);}
     updateTemplateStatus();
     if(state.sources)recalculateReport();
     if(state.criticalSources)recalculateCritical();
-    toast('НТЗ и архив загружены. Выгрузка Критики доступна после проверки сегодняшних файлов.');
+    toast('Справочник обновлён. В обычном режиме он уже встроен, третий файл не требуется.');
   }
   for(const id of ['templateFile','criticalTemplateFile'])$(id).addEventListener('change',async e=>{
     const file=e.target.files?.[0];if(!file)return;
@@ -313,11 +315,11 @@
     finally{e.target.value='';}
   });
   $('clearTemplate').addEventListener('click',()=>{
-    state.template=null;
+    state.template=window.MagnitNorms||null;
     try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
     updateTemplateStatus();if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();
-    $('exportStock').disabled=true;updateCriticalExportState();updateExportHint();
-    toast('Локальный справочник очищен.');
+    updateCriticalExportState();updateExportHint();
+    toast('Восстановлен встроенный НТЗ и полный архив.');
   });
 
   // Независимая «Критика»: две новые выгрузки, дата только локальная сегодня.
@@ -334,7 +336,7 @@
     if(!validSaldo||!validService)reason='Шаг 1: выберите ДВА отдельных Excel для Критики с точными названиями.';
     else if(!state.criticalSources)reason='Шаг 2: нажмите «Проверить критику за сегодня» и дождитесь обработки.';
     else if(!dates.includes(today))reason=`Выгрузка НЕ за сегодня (${today}). Даты уровня сервиса: ${dates.join(', ')||'не найдены'}. Критика за вчера не скачивается — загрузите два файла за сегодня.`;
-    else if(!normCount)reason='Шаг 3: загрузите справочник с листом «НТЗ» здесь, в разделе «Критика». Без нормативов НК/КК скачать отчёт нельзя.';
+    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.5).';
     else if(!state.criticalReport?.records?.length)reason='По выбранному режиму не найдено товарных позиций. Переключите «Состав критики» на «Эталон — все товарные позиции» или «Все позиции из выгрузок».';
     else if(state.criticalReport.date!==today)reason='Дата Критики изменилась. Заново обработайте две сегодняшние выгрузки.';
     $('exportCritical').disabled=!!reason;

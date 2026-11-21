@@ -100,7 +100,7 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  return {name:'Контроль',headers:['Проверка','Значение или код','Комментарий'],rows,widths:[42,28,81]};
 }
 function prepareSheets({stock=null,critical=null,stockSources=null,criticalSources=null,template=null,etalon=null,snapshot='main'}={}){
- if(!template||!Object.keys(template.norms||{}).length)throw new Error('Сначала загрузите образец с листом «НТЗ». Без НТЗ отчёт нельзя выгружать.');
+ if(!template||!Object.keys(template.norms||{}).length)throw new Error('Встроенный НТЗ не загрузился. Проверьте файл assets/norms.js в версии сайта 2.5.');
  if(!stock&&!critical)throw new Error('Нет подготовленного отчёта.');
  const norm=Core.selectedNorms(template,snapshot);
  const selectedLabel=snapshot==='main'?`Основной НТЗ (${template.mainDate||'без даты'})`:`Архив ${template.snapshots?.[Number(snapshot)]?.date||'без даты'}`;
