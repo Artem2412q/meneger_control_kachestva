@@ -81,7 +81,7 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  ['Кодов цветов',template?.flowerCodes?.length||0,'Лист «код цветы»; лист «Цветы» формируется по совпадениям'],
  ['Дата товарного запаса',stock?.date||'—','Историческая дата возможна'],
  ['Дата критики',critical?.date||'не сформирована','Только текущий день, файлы загружаются отдельно'],
- ['Отбор для критики','Овощи и фрукты (предварительно)','Точные правила отбора требуют сверки с рабочим примером']];
+ ['Отбор для критики',critical?.stats?.appliedMode||'не сформирована','Выбран пользователем; бизнес-правила критических ТП уточняются']];
  for(const [section,rep] of [['Товарный запас',stock],['Критика',critical]]){
   if(!rep)continue;
   rows.push([`${section}: товаров`,rep.records.length,'']);
@@ -99,7 +99,7 @@ function makeControl(stock,critical,template,selectedLabel,etalon){
  }
  return {name:'Контроль',headers:['Проверка','Значение или код','Комментарий'],rows,widths:[42,28,81]};
 }
-function prepareSheets({stock=null,critical=null,stockSources=null,template=null,etalon=null,snapshot='main'}={}){
+function prepareSheets({stock=null,critical=null,stockSources=null,criticalSources=null,template=null,etalon=null,snapshot='main'}={}){
  if(!template||!Object.keys(template.norms||{}).length)throw new Error('Сначала загрузите образец с листом «НТЗ». Без НТЗ отчёт нельзя выгружать.');
  if(!stock&&!critical)throw new Error('Нет подготовленного отчёта.');
  const norm=Core.selectedNorms(template,snapshot);
@@ -108,7 +108,7 @@ function prepareSheets({stock=null,critical=null,stockSources=null,template=null
  const sheets=[];
  if(stock)sheets.push(makeDaySheet(stock,{normLength:normCount}));
  if(critical)sheets.push(makeDaySheet(critical,{critical:true,normLength:normCount}));
- if(etalon?.codes?.length)sheets.push(makeEtalonSheet(etalon,stock,stockSources,norm));
+ if(etalon?.codes?.length)sheets.push(makeEtalonSheet(etalon,stock||critical,stockSources||criticalSources,norm));
  sheets.push(makeNormSheet({...template,chosenDate:selectedLabel},norm));
  sheets.push(makeArchive(template));
  sheets.push({name:'код цветы',headers:['Код'],rows:(template.flowerCodes||[]).map(c=>[c]),widths:[22]});

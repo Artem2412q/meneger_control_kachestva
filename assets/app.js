@@ -278,33 +278,45 @@
     }
     if([...select.options].some(o=>o.value===oldValue))select.value=oldValue;
     select.disabled=!present;
+    const criticalSelect=$('criticalNormSnapshot');
+    criticalSelect.replaceChildren(...[...select.options].map(o=>new Option(o.text,o.value)));
+    criticalSelect.value=select.value;criticalSelect.disabled=!present;
     $('templateStatus').textContent=present?`НТЗ: ${Object.keys(template.norms).length} норм · ${template.catalog.length} кодов образца · цветов: ${template.flowerCodes?.length||0}`:'Справочник ещё не загружен';
+    $('criticalTemplateStatus').textContent=present?`НТЗ подключён: ${Object.keys(Core.selectedNorms(template,select.value)).length} кодов; выбран ${select.options[select.selectedIndex].text}.`:'НТЗ не загружен. Выберите файл с листом «НТЗ» прямо здесь или в разделе «Товарный запас».';
     $('archiveInfo').textContent=present?`Архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Выбранный срез полностью включается в итоговый Excel.`:'Архив НТЗ будет доступен после импорта образца.';
-    $('clearTemplate').hidden=!present;updateChecks();updateExportHint();
+    $('clearTemplate').hidden=!present;updateChecks();updateExportHint();updateCriticalExportState();
   }
-  $('normSnapshot').addEventListener('change',()=>{if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();updateChecks();});
+  $('normSnapshot').addEventListener('change',()=>{if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();updateChecks();updateTemplateStatus();});
+  $('criticalNormSnapshot').addEventListener('change',()=>{ $('normSnapshot').value=$('criticalNormSnapshot').value; $('normSnapshot').dispatchEvent(new Event('change')); });
   try {
     const stored=localStorage.getItem(STORAGE_KEY);if(stored)state.template=JSON.parse(stored);
   }catch(e){console.warn('localStorage not available',e);}
   updateTemplateStatus();
-  $('templateFile').addEventListener('change',async e=>{
+  // One shared NТЗ import is available from BOTH the stock and the critical page.
+  async function importTemplateFile(file){
+    if(!/\.xlsx?$/i.test(file.name))throw Error('НТЗ должен иметь формат .xls или .xlsx.');
+    $('templateStatus').textContent='Чтение справочника…';
+    $('criticalTemplateStatus').textContent='Чтение НТЗ и архива…';
+    const buffer=await file.arrayBuffer();
+    const result=await runWorker('template',{buffer});
+    state.template=Core.mergeNormHistory(state.template,result);
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state.template));}
+    catch(err){toast('НТЗ загружен, но браузер не разрешил сохранить его на будущее.',true);}
+    updateTemplateStatus();
+    if(state.sources)recalculateReport();
+    if(state.criticalSources)recalculateCritical();
+    toast('НТЗ и архив загружены. Выгрузка Критики доступна после проверки сегодняшних файлов.');
+  }
+  for(const id of ['templateFile','criticalTemplateFile'])$(id).addEventListener('change',async e=>{
     const file=e.target.files?.[0];if(!file)return;
-    if(!/\.xlsx?$/i.test(file.name))return toast('Образец должен иметь формат .xls или .xlsx.',true);
-    $('templateStatus').textContent='Чтение справочника...';
-    try {
-      const buffer=await file.arrayBuffer();
-      state.template=Core.mergeNormHistory(state.template,await runWorker('template',{buffer}));
-      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state.template));}catch(err){toast('Справочник загружен, но браузер не разрешил сохранить его на будущее.');}
-      updateTemplateStatus();if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();
-      toast('Импортированы НТЗ, полный архив НТЗ и коды цветов.');
-    }catch(err){updateTemplateStatus();toast(err.message,true);}
-    e.target.value='';
+    try{await importTemplateFile(file);}catch(err){updateTemplateStatus();toast(err.message,true);}
+    finally{e.target.value='';}
   });
   $('clearTemplate').addEventListener('click',()=>{
     state.template=null;
     try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
     updateTemplateStatus();if(state.sources)recalculateReport();if(state.criticalSources)recalculateCritical();
-    $('exportStock').disabled=true;$('exportCritical').disabled=true;updateExportHint();
+    $('exportStock').disabled=true;updateCriticalExportState();updateExportHint();
     toast('Локальный справочник очищен.');
   });
 
@@ -312,13 +324,31 @@
   function criticalToday(){return Core.toRuDate(Core.todayIso());}
   $('todayDateLabel').textContent=criticalToday();
   function criticalName(kind){return kind==='criticalSaldo'?'rep_turnover_saldo_for_logist_excel':'rpt_levelservice_api.level_service_hd_gk_eday_hm';}
+  function updateCriticalExportState(){
+    const today=criticalToday(),dates=Object.keys(state.criticalSources?.meta?.dates||{});
+    $('todayDateLabel').textContent=today;
+    const validSaldo=validateName(state.files.criticalSaldo,criticalName('criticalSaldo'));
+    const validService=validateName(state.files.criticalService,criticalName('criticalService'));
+    const normCount=Object.keys(Core.selectedNorms(state.template,$('normSnapshot').value)).length;
+    let reason='';
+    if(!validSaldo||!validService)reason='Шаг 1: выберите ДВА отдельных Excel для Критики с точными названиями.';
+    else if(!state.criticalSources)reason='Шаг 2: нажмите «Проверить критику за сегодня» и дождитесь обработки.';
+    else if(!dates.includes(today))reason=`Выгрузка НЕ за сегодня (${today}). Даты уровня сервиса: ${dates.join(', ')||'не найдены'}. Критика за вчера не скачивается — загрузите два файла за сегодня.`;
+    else if(!normCount)reason='Шаг 3: загрузите справочник с листом «НТЗ» здесь, в разделе «Критика». Без нормативов НК/КК скачать отчёт нельзя.';
+    else if(!state.criticalReport?.records?.length)reason='По выбранному режиму не найдено товарных позиций. Переключите «Состав критики» на «Эталон — все товарные позиции» или «Все позиции из выгрузок».';
+    else if(state.criticalReport.date!==today)reason='Дата Критики изменилась. Заново обработайте две сегодняшние выгрузки.';
+    $('exportCritical').disabled=!!reason;
+    $('criticalExportHint').textContent=reason||`Критика готова: ${state.criticalReport.records.length} ТП за ${today}. Нажмите «Скачать критику Excel»; при блокировке автоматической загрузки появится резервная ссылка.`;
+    return reason;
+  }
   function updateCriticalButton(){
     $('processCritical').disabled=!validateName(state.files.criticalSaldo,criticalName('criticalSaldo'))||
       !validateName(state.files.criticalService,criticalName('criticalService'));
+    updateCriticalExportState();
   }
   function invalidateCritical(){
     state.criticalSources=null;state.criticalReport=null;resetDownloadLink('criticalDownloadLink');
-    $('exportCritical').disabled=true;$('criticalPanel').hidden=true;updateCriticalButton();
+    $('criticalPanel').hidden=true;updateCriticalButton();
   }
   function setCriticalFile(kind,file){
     if(!file)return;state.files[kind]=file;invalidateCritical();
@@ -339,21 +369,22 @@
     zone.addEventListener('drop',e=>setCriticalFile(kind,e.dataTransfer?.files?.[0]));
   }
   function recalculateCritical(){
-    if(!state.criticalSources)return;
+    if(!state.criticalSources){updateCriticalExportState();return;}
     const date=criticalToday();
     if(!state.criticalSources.meta.dates[date]){
-      state.criticalReport=null;$('criticalPanel').hidden=true;$('exportCritical').disabled=true;
-      return toast(`Критика строго за сегодня (${date}). В выгрузке уровня сервиса нет такой даты.`,true);
+      state.criticalReport=null;$('criticalPanel').hidden=true;
+      updateCriticalExportState();
+      return toast(`Нет операций за сегодня (${date}). Доступные даты: ${Object.keys(state.criticalSources.meta.dates).join(', ')||'нет'}.`,true);
     }
     const payload={...state.criticalSources,norms:Core.selectedNorms(state.template,$('normSnapshot').value),
-      catalog:state.template?.catalog||[]};
-    state.criticalReport=Core.buildCriticalReport(payload,{today:Core.todayIso(),mode:'fresh'});
-    $('exportCritical').disabled=!state.template||!state.criticalReport.records.length;
+      catalog:state.template?.catalog||[],etalonCodes:state.etalon?.codes||[],flowerCodes:state.template?.flowerCodes||[]};
+    try{state.criticalReport=Core.buildCriticalReport(payload,{today:Core.todayIso(),mode:$('criticalMode').value});}
+    catch(error){state.criticalReport=null;$('criticalPanel').hidden=true;updateCriticalExportState();return toast(error.message,true);}
     resetDownloadLink('criticalDownloadLink');
-    $('criticalExportHint').textContent=state.template?'Критика готова к экспорту.':'Для выгрузки Критики необходимо подключить НТЗ.';
+    updateCriticalExportState();
     $('criticalPanel').hidden=false;
     const {stats,records}=state.criticalReport;
-    $('criticalSummary').textContent=`Сегодня ${date} · ${records.length} товаров (отбор овощи/фрукты — предварительный)`;
+    $('criticalSummary').textContent=`Сегодня ${date} · ${records.length} товаров · ${modeLabel(state.criticalReport.stats.appliedMode)}`;
     $('criticalMetrics').replaceChildren();
     for(const [value,name] of [[stats.total,'Товарных позиций'],[stats.totalOrder,'Заказ'],[stats.overMax,'Выше КК'],[stats.normMissing,'Нормы не найдены']]){
       const box=document.createElement('div');box.className='metric';
@@ -372,6 +403,7 @@
     });
     if(stats.normMissing)toast(`Критика: отсутствуют НК/КК для ${stats.normMissing} товаров. Проверьте «Контроль».`,true);
   }
+  $('criticalMode').addEventListener('change',recalculateCritical);
   $('processCritical').addEventListener('click',async()=>{
     if(!validateName(state.files.criticalSaldo,criticalName('criticalSaldo'))||!validateName(state.files.criticalService,criticalName('criticalService')))
       return toast('Выберите две отдельные корректные выгрузки для критики.',true);
@@ -383,14 +415,25 @@
     }catch(e){invalidateCritical();toast(e.message,true);}finally{button.textContent='Проверить критику за сегодня →';updateCriticalButton();}
   });
   $('exportCritical').addEventListener('click',()=>{
-    if(!state.criticalReport||state.criticalReport.date!==criticalToday())return toast('Критика устарела. Загрузите текущие выгрузки.',true);
+    const reason=updateCriticalExportState();
+    if(reason)return toast(reason,true);
     try{
-      const sheets=window.MagnitReport.prepareSheets({critical:state.criticalReport,template:state.template,etalon:state.etalon,snapshot:$('normSnapshot').value});
+      $('criticalExportHint').textContent='Формирование Excel Критики…';
+      const sheets=window.MagnitReport.prepareSheets({critical:state.criticalReport,criticalSources:state.criticalSources,template:state.template,etalon:state.etalon,snapshot:$('normSnapshot').value});
       const downloaded=window.MagnitExcel.save(sheets,`MAGNIT_KRITIKA_${state.criticalReport.date.replaceAll('.','-')}.xlsx`);
       keepDownloadLink('criticalDownloadLink',downloaded);
-      toast('Критика сформирована. Резервная ссылка для скачивания появилась ниже.');
-    }catch(e){toast(e.message,true);}
+      $('criticalExportHint').textContent=`Готово: MAGNIT_KRITIKA_${state.criticalReport.date.replaceAll('.','-')}.xlsx. Если загрузка не началась, нажмите ссылку прямо под кнопкой.`;
+      toast('Критика сформирована. Если файл не скачался — воспользуйтесь резервной ссылкой.');
+    }catch(e){$('criticalExportHint').textContent=`Ошибка выгрузки: ${e.message}`;toast(e.message,true);}
   });
+  $('testCriticalDownload').addEventListener('click',()=>{
+    try{
+      const f=window.MagnitExcel.save([{name:'Тест Критики',headers:['Проверка','Результат'],rows:[['Скачивание Excel Критики','Работает']],widths:[36,28]}],'MAGNIT_TEST_KRITIKA.xlsx');
+      keepDownloadLink('criticalDownloadLink',f);
+      toast('Тестовый Excel создан. Если браузер его не скачал — нажмите резервную ссылку в разделе Критики.');
+    }catch(error){$('criticalExportHint').textContent=`Ошибка теста скачивания: ${error.message}`;toast(error.message,true);}
+  });
+  updateCriticalButton();
 
   async function importGT(file) {
     $('gtStatus').textContent='Чтение реестра возвратов...';
