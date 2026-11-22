@@ -40,3 +40,17 @@
 .macro-download[hidden]{display:none}
 @media(max-width:1050px){.macro-layout{grid-template-columns:1fr}.macro-right{order:2}}
 @media(max-width:620px){.macro-fields{grid-template-columns:1fr}.macro-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.macro-actions>*{width:100%}.macro-output-top .macro-export-actions{width:100%}.macro-export-actions>*{width:100%}}
+/* 2.14: two separate age-group rates and the buffer accumulation list */
+.macro-clear{margin-top:12px}
+.macro-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.macro-table{min-width:1090px}
+.macro-table th:nth-child(1),.macro-table td:nth-child(1){width:90px}
+.macro-table th:nth-child(2),.macro-table td:nth-child(2){width:95px}
+.macro-table th:nth-child(3),.macro-table td:nth-child(3){width:118px;white-space:nowrap}
+.macro-table th:nth-child(4),.macro-table td:nth-child(4){width:345px;white-space:normal}
+.macro-table th:nth-child(5),.macro-table td:nth-child(5){width:110px}
+.macro-table th:nth-child(6),.macro-table td:nth-child(6){width:145px}
+.macro-table th:nth-child(7),.macro-table td:nth-child(7){width:75px}
+.macro-table th:nth-child(8),.macro-table td:nth-child(8){width:135px}
+.macro-table td:nth-child(3){background:#f2f7fc;color:#1d4b71;font-weight:700}
+@media(max-width:620px){.macro-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}

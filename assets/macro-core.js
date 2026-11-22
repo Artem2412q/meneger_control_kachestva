@@ -1,93 +1,101 @@
-/* MAGNIT RC — pallet inspection sample. All decisions are based on factual XLSX rows.
-   Does not execute VBA. Deterministic random selection by saved seed for audit. */
-(function(root,factory){const lib=factory();if(typeof module==='object'&&module.exports)module.exports=lib;root.MagnitPalletMacro=lib;})(typeof self==='undefined'?globalThis:self,function(){
+/* MAGNIT RC — pallet inspection selection 2.14.
+   The source is the uploaded report; no synthetic pallets or post-inspection comments.
+   Two independently adjustable sampling rates, reproducible random seed.
+*/
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.MagnitPalletMacro=api;})(typeof self==='undefined'?globalThis:self,function(){
 'use strict';
 const txt=x=>String(x==null?'':x).trim();
 const norm=x=>txt(x).toLocaleUpperCase('ru-RU').replace(/Ё/g,'Е').replace(/\s+/g,' ');
 const code=x=>txt(x).replace(/\.0+$/,'');
-const num=x=>{const n=Number(txt(x).replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:NaN;};
+const num=x=>{if(x===null||x===undefined||txt(x)==='')return NaN;const n=Number(txt(x).replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:NaN;};
 const freshStart=/^(?:ТОМАТЫ?|ПОМИДОРЫ?|ОГУРЦЫ?|КАРТОФЕЛЬ|МОРКОВЬ|СВЕКЛА|КАПУСТА|БРОККОЛИ|ЛУК|ЧЕСНОК|ПЕРЕЦ|БАКЛАЖАНЫ?|КАБАЧКИ?|КАБАЧОК|ТЫКВА|РЕДИС|РЕДЬКА|ДАЙКОН|СЕЛЬДЕРЕЙ|САЛАТ|РУККОЛА|ШПИНАТ|УКРОП|ПЕТРУШКА|КИНЗА|БАЗИЛИК|ЩАВЕЛЬ|ЗЕЛЕНЬ|ЯБЛОКИ?|ГРУШИ?|БАНАНЫ?|МАНДАРИНЫ?|АПЕЛЬСИНЫ?|ЛИМОНЫ?|ЛАЙМЫ?|ГРЕЙПФРУТЫ?|ПОМЕЛО|КИВИ|ВИНОГРАД|СЛИВА|ПЕРСИКИ?|НЕКТАРИНЫ?|АБРИКОСЫ?|ХУРМА|ГРАНАТЫ?|АНАНАСЫ?|МАНГО|АВОКАДО|АРБУЗЫ?|ДЫНИ?|КЛУБНИКА|ЗЕМЛЯНИКА|МАЛИНА|ЕЖЕВИКА|ГОЛУБИКА|ЧЕРНИКА|СМОРОДИНА|КРЫЖОВНИК|ЧЕРЕШНЯ|ВИШНЯ|КЛЮКВА|БРУСНИКА|ИНЖИР|ФЕЙХОА|КОКОСЫ?|КУКУРУЗА)(?:\s|[:(]|$)/;
-// Conservative exclusion: a product mentioning fruit as flavor/ingredient is not fresh produce.
-const processed=/(?:СОК\b|НЕКТАР\s+\d|ПЮРЕ|ДЖЕМ|ВАРЕНЬ|ЗАМОРОЖ|МОРОЖЕН|КОНСЕРВ|МАРИН|СУШЕН|СУШЁН|КВАШЕН|ТУШЕН|ЧИПС|ПОЛУФАБРИКАТ|СОУС|КЕТЧУП|СУП\b|ПО-КОРЕЙСКИ|САЛАТ\s+(?:ЦЕЗАРЬ|ОЛИВЬЕ|ВИТАМИННЫЙ|ГРЕЧЕСКИЙ|КРАБОВЫЙ)|ФРИ\b|ЗАПРАВК|КОКТЕЙЛ|ЙОГУРТ|НАПИТОК|ВЯЛЕН|ОТВАРН|ВАРЕН|ВАРЁН|НАРЕЗАННЫЙ|ЖАРЕН|ПРОТЕР|ПРОТЁР|ПЕРЕТЕР|САХАРОМ|СИРОП|В СОБСТВЕННОМ СОКУ|ПАСТА|ЗАПЕЧЕН|ЗАПЕЧЁН|ПЕЧЕНЫЙ)/;
-const REQ={number:['номер','номер палеты','№ палеты','палета'],code:['код','код товара'],name:['назв','наименование товара','наименование','товар'],mo:['мо'],mp:['мп']};
-const OPT={active:['актив'],quantity:['колич','количество'],manufacturer:['производитель'],arrival:['№ прихода','номер прихода'],country:['страна']};
-function normalizeHead(x){return norm(x).toLowerCase().replace(/\s+/g,' ').replace(/ё/g,'е').trim();}
+const processed=/(?:СОК\b|НЕКТАР\s+\d|ПЮРЕ|ДЖЕМ|ВАРЕНЬ|ЗАМОРОЖ|МОРОЖЕН|КОНСЕРВ|МАРИН|СУШЕН|СУШЁН|КВАШЕН|ТУШЕН|ЧИПС|ПОЛУФАБРИКАТ|СОУС|КЕТЧУП|СУП\b|ПО-КОРЕЙСКИ|САЛАТ\s+(?:ЦЕЗАРЬ|ОЛИВЬЕ|ВИТАМИННЫЙ|ГРЕЧЕСКИЙ|КРАБОВЫЙ)|ФРИ\b|ЗАПРАВК|КОКТЕЙЛ|ЙОГУРТ|НАПИТОК|ВЯЛЕН|ОТВАРН|ВАРЕН|ВАРЁН|НАРЕЗАННЫЙ|ЖАРЕН|ПРОТЕР|ПРОТЁР|ПЕРЕТЕР|САХАРОМ|СИРОП|СОЛЕН|СОЛЁН|ГОРОШКОМ|ЛЕПЕСТК|МОРСКОЙ КАПУСТЫ|В\/МАЙОН|СПЕЦИ|В СОБСТВЕННОМ СОКУ|ПАСТА|ЗАПЕЧЕН|ЗАПЕЧЁН|ПЕЧЕНЫЙ)/;
+const REQ={number:['номер','номер палеты','№ палеты','палета'],code:['код','код товара'],name:['назв','наименование товара','наименование','товар'],mp:['мп']};
+const OPT={mo:['мо'],active:['актив'],quantity:['колич','количество'],manufacturer:['производитель'],arrival:['№ прихода','номер прихода'],country:['страна'],formed:['дата формирования'],cep:['цеп','sscc/центр.пэ','sscc','центр.пэ'],avgWeight:['средний вес коробки'],defect:['процент брака'],defectDate:['дата установки (% брака)'],note:['примечание'],days:['дней на хранении']};
+const INSPECTION_HEADERS=['актив','Дата формирования','номер','Дней на хранении','Сегодня','ЦЕП','Снять на проверку','код','назв','МО','МП','колич','Средний вес коробки','Процент брака','Дата установки (% брака)','Примечание','Результат проверки','Процент бракапо итогам разбраковки','Комментарий (ОКК)'];
+function normalizeHead(x){return norm(x).toLowerCase().replace(/\s+/g,' ').trim();}
 function detectHeaders(values){
-  const entries=values.map((v,i)=>[normalizeHead(v),i]); const find=aliases=>entries.find(([v])=>aliases.some(s=>v===s));
-  const map={};for(const [k,aliases] of Object.entries({...REQ,...OPT})){const match=find(aliases);map[k]=match?match[1]:-1;}
-  const missing=Object.keys(REQ).filter(k=>map[k]<0);
-  if(missing.length)throw Error('В Excel не найдены обязательные колонки: '+missing.map(k=>REQ[k][0]).join(', ')+'.');
-  return map;
+ const arr=values.map((v,i)=>[normalizeHead(v),i]);const found=aliases=>arr.find(([s])=>aliases.includes(s));const map={};
+ for(const [key,aliases] of Object.entries({...REQ,...OPT})){const q=found(aliases);map[key]=q?q[1]:-1;}
+ const missing=Object.keys(REQ).filter(k=>map[k]<0);if(missing.length)throw Error('В выгрузке отсутствуют обязательные столбцы: '+missing.map(k=>REQ[k][0]).join(', '));
+ if(map.formed<0&&map.days<0)throw Error('Для двух возрастных выборок нужен столбец «Дата формирования» или «Дней на хранении».');
+ return map;
 }
-function makePallet(row,fields,rowNo){
-  const get=k=>fields[k]<0?'':row[fields[k]];
-  return {number:code(get('number')),code:code(get('code')),name:txt(get('name')),
-    mo:txt(get('mo')),mp:txt(get('mp')),active:txt(get('active')),
-    quantity:fields.quantity<0?null:num(get('quantity')),
-    manufacturer:txt(get('manufacturer')),arrival:txt(get('arrival')),country:txt(get('country')),rowNo};
+function makePallet(row,cols,rowNo){const get=k=>cols[k]===undefined||cols[k]<0?'':row[cols[k]];
+ return {number:code(get('number')),code:code(get('code')),name:txt(get('name')),mo:txt(get('mo')),mp:txt(get('mp')),
+ active:txt(get('active')),quantity:cols.quantity<0?null:num(get('quantity')),manufacturer:txt(get('manufacturer')),
+ arrival:txt(get('arrival')),country:txt(get('country')),formed:txt(get('formed')),cep:txt(get('cep')),
+ avgWeight:txt(get('avgWeight')),defect:txt(get('defect')),defectDate:txt(get('defectDate')),
+ note:txt(get('note')),sourceDays:cols.days<0?NaN:num(get('days')),rowNo};
+}
+function parseDate(x){
+ const raw=txt(x);if(!raw)return null;
+ if(/^\d+(?:\.\d+)?$/.test(raw)){const n=Number(raw);if(n>30000&&n<100000)return Math.round((n-25569)*86400000);}
+ let m=raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?:\D|$)/);
+ if(m){let yy=Number(m[3]);if(yy<100)yy+=yy<50?2000:1900;const d=Date.UTC(yy,Number(m[2])-1,Number(m[1]));if(new Date(d).getUTCDate()===Number(m[1])&&new Date(d).getUTCMonth()===Number(m[2])-1)return d;return null;}
+ m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m){const d=Date.UTC(+m[1],+m[2]-1,+m[3]);if(new Date(d).getUTCDate()===+m[3])return d;}
+ return null;
+}
+function isoToDate(x){return parseDate(x);}
+function daysOnSite(p,asOfDate){const end=isoToDate(asOfDate);if(end===null)return null;
+ const formed=parseDate(p.formed);if(formed!==null){const diff=Math.floor((end-formed)/86400000);return diff>=0?diff:null;}
+ if(Number.isFinite(p.sourceDays)&&p.sourceDays>=0)return Math.floor(p.sourceDays);
+ return null;
 }
 function isFreshProduce(name){const t=norm(name);return freshStart.test(t)&&!processed.test(t);}
-function isBuffer(mp,mode='12-16'){
- const t=norm(mp);if(!/(БАФ|БУФ)/.test(t))return false;
- if(mode==='all')return true;
- const match=t.match(/(?:БАФЕР|БУФЕР)\s*(\d{1,2})[-\s]/);
- return Boolean(match&&Number(match[1])>=12&&Number(match[1])<=16);
+function isBuffer(mp,mode='all'){const t=norm(mp);if(!/(БАФ|БУФ)/.test(t))return false;
+ if(mode==='all')return true;const m=t.match(/(?:БАФЕР|БУФЕР)\s*(\d{1,2})[-\s]/);return !!(m&&Number(m[1])>=12&&Number(m[1])<=16);
 }
-function validPallet(p,mode='12-16'){
- if(!p||!p.number||!p.code||!p.name||!p.mo||!p.mp)return false;
+function validPallet(p,zone='all'){
+ if(!p?.number||!p.code||!p.name||!p.mp)return false;
  if(p.active!==''&&!['1','ДА','TRUE'].includes(norm(p.active)))return false;
  if(p.quantity!==null&&(!Number.isFinite(p.quantity)||p.quantity<=0))return false;
- return isFreshProduce(p.name)&&isBuffer(p.mp,mode);
+ return isFreshProduce(p.name)&&isBuffer(p.mp,zone);
 }
-function supplierMatches(p,term){
- if(!txt(term))return true;
- const search=norm(term).replace(/[\s.\-–—«»"']/g,'');
- const fields=[p.manufacturer,p.arrival,p.country];
+function supplierMatches(p,term){if(!txt(term))return true;const search=norm(term).replace(/[\s.\-–—«»"']/g,'');const fields=[p.manufacturer,p.arrival,p.country];
  if(fields.some(v=>norm(v).replace(/[\s.\-–—«»"']/g,'').includes(search)))return true;
- // Known user-provided alias: GT/ГТ = Гранд-Трейд; incoming numbers such as ГТАдг… are identifiers.
- const isGT=['ГТ','GT','ГРАНДТРЕЙД','GRANDTRADE'].includes(search);
- if(isGT&&(fields.some(v=>/^(?:ГТ|GT)АДГ/i.test(norm(v)))||norm(p.country).includes('ТУРЦИЯ')))return true;
- return false;
+ const gt=['ГТ','GT','ГРАНДТРЕЙД','GRANDTRADE'].includes(search);
+ return gt&&(fields.some(v=>/^(?:ГТ|GT)АДГ/i.test(norm(v)))||norm(p.country).includes('ТУРЦИЯ'));
 }
-function compareStorage(a,b){
- const parts=s=>{const m=txt(s).match(/(\d{1,2})-(\d{1,3})-(\d{1,2})/);return m?[+m[1],+m[2],+m[3]]:[999,999,999];};
- const x=parts(a.mp),y=parts(b.mp);for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]-y[i];
- return String(a.number).localeCompare(String(b.number),'ru',{numeric:true});
-}
-function shuffled(input,random){const arr=[...input];for(let i=arr.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function compareStorage(a,b){const parts=s=>{const m=txt(s).match(/(\d{1,2})-(\d{1,3})-(\d{1,2})/);return m?[+m[1],+m[2],+m[3]]:[999,999,999]};const x=parts(a.mp),y=parts(b.mp);for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]-y[i];return a.number.localeCompare(b.number,'ru',{numeric:true});}
+function shuffled(arr,random){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function seeded(seed){let x=(Number(seed)>>>0)||0x9E3779B9;return ()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return (x>>>0)/4294967296;};}
-function build(pallets,{percent=3,supplier='',productCode='',zone='12-16',seed=123456789}={}){
- const pct=Number(percent);if(!Number.isFinite(pct)||pct<=0||pct>100)throw Error('Укажите процент выборки от 0,1 до 100.');
- const qualified=pallets.filter(p=>validPallet(p,zone));
- const qSupplier=txt(supplier);const filtered=qSupplier?qualified.filter(p=>supplierMatches(p,qSupplier)):qualified;
- if(!filtered.length)throw Error(qSupplier?'В исходном Excel нет подтверждённых овощей или фруктов по поставщику «'+qSupplier+'» в выбранных буферных зонах. Уточните поставщика или очистите поле.':'В файле нет подходящих палет: нужны фактические овощи/фрукты с остатком на буферных адресах.');
- const target=code(productCode);
- const hasOtherCodes=target?filtered.some(p=>p.code!==target):false;
- if(target&&!/^[0-9]+$/.test(target))throw Error('Код товара должен содержать только цифры.');
- const prioritized=target?filtered.filter(p=>p.code===target):[];
- if(target&&!prioritized.length)throw Error('Код '+target+' не найден среди подтверждённых палет овощей/фруктов для выбранных условий. Непроверенные товары не добавляются.');
- const size=Math.min(filtered.length,Math.max(1,Math.ceil(filtered.length*pct/100)));
- const rand=seeded(seed);let selected=[],selectedKey=new Set();
- const key=p=>[p.number,p.code,p.mp].join('\u0000');
- const add=p=>{const k=key(p);if(!selectedKey.has(k)){selectedKey.add(k);selected.push(p);}};
- const priorityQuota=target?Math.min(prioritized.length,size,Math.max(1,Math.min(5,Math.ceil(size*.25)))):0;
- shuffled(prioritized,rand).slice(0,priorityQuota).forEach(add);
- // Random draw across distinct item codes first: prevents large-volume apple SKUs dominating a small inspection round.
- const groups=new Map();for(const p of shuffled(filtered,rand)){
-   if(selectedKey.has(key(p)))continue;
-   if(target && p.code===target && hasOtherCodes)continue;
-   if(!groups.has(p.code))groups.set(p.code,[]);
-   groups.get(p.code).push(p);
- }
- for(const code of shuffled([...groups.keys()],rand)){
-   if(selected.length>=size)break;
-   const pool=groups.get(code);if(pool?.length)add(pool[0]);
- }
- if(selected.length<size){for(const p of shuffled(filtered,rand)){if(selected.length>=size)break;if(target && p.code===target && hasOtherCodes)continue;add(p);}}
- selected=selected.sort(compareStorage);
- return {selected,qualified:qualified.length,eligible:filtered.length,count:size,percent:pct,seed:Number(seed)>>>0,
-   uniqueCodes:new Set(selected.map(p=>p.code)).size,priorityCount:selected.filter(p=>target&&p.code===target).length,
-   supplier:qSupplier,productCode:target,zone,sourcePallets:pallets.length,remainingSupplierMissing:pallets.filter(p=>!p.manufacturer).length};
+function sampleGroup(pool,count,random,priorityCode,priorityRemaining){const picked=[],seen=new Set();const key=p=>[p.number,p.code,p.mp].join('\x00');const add=p=>{const k=key(p);if(!seen.has(k)){seen.add(k);picked.push(p);}};
+ if(priorityCode&&priorityRemaining>0)for(const p of shuffled(pool.filter(p=>p.code===priorityCode),random).slice(0,Math.min(count,priorityRemaining)))add(p);
+ const hasOthers=priorityCode&&pool.some(q=>q.code!==priorityCode);
+ const groups=new Map();for(const p of shuffled(pool,random)){if(seen.has(key(p)))continue;if(priorityCode&&p.code===priorityCode&&hasOthers)continue;if(!groups.has(p.code))groups.set(p.code,[]);groups.get(p.code).push(p);}
+ for(const name of shuffled([...groups.keys()],random)){if(picked.length>=count)break;add(groups.get(name)[0]);}
+ if(picked.length<count)for(const p of shuffled(pool,random)){if(picked.length>=count)break;add(p);}
+ return picked;
 }
-return {txt,norm,detectHeaders,makePallet,isFreshProduce,isBuffer,validPallet,supplierMatches,compareStorage,build};
+function build(pallets,{recentPercent=1.5,olderPercent=1.5,recentDays=3,asOfDate='',supplier='',productCode='',zone='all',seed=123456789}={}){
+ const a=Number(recentPercent),b=Number(olderPercent),cutoff=Number(recentDays),date=isoToDate(asOfDate);
+ if(date===null)throw Error('Укажите корректную дату проверки.');
+ if(!Number.isFinite(a)||a<=0||a>100||!Number.isFinite(b)||b<=0||b>100)throw Error('Каждый процент должен быть больше 0 и не превышать 100.');
+ if(!Number.isInteger(cutoff)||cutoff<0||cutoff>365)throw Error('Граница новых палет должна быть в пределах от 0 до 365 дней.');
+ const product=code(productCode);if(product&&!/^\d+$/.test(product))throw Error('Код товара должен содержать только цифры.');
+ const allBuffers=pallets.filter(p=>p?.number&&p.mp&&isBuffer(p.mp,'all'));
+ const fresh=allBuffers.filter(p=>validPallet(p,zone));
+ const eligible=supplier?fresh.filter(p=>supplierMatches(p,supplier)):fresh;
+ if(supplier&&!eligible.length)throw Error('По поставщику «'+supplier+'» нет подтверждённых палет свежих овощей/фруктов. Уточните фильтр.');
+ if(product&&!eligible.some(p=>p.code===product))throw Error('Код '+product+' не найден среди подходящих палет из загруженного Excel.');
+ const recent=[],older=[],unknown=[];
+ for(const p of eligible){const days=daysOnSite(p,asOfDate);if(days===null)unknown.push(p);else if(days<=cutoff)recent.push(p);else older.push(p);}
+ const count=r=>Math.min(r.length,Math.ceil(r.length*(r===recent?a:b)/100));
+ const rng=seeded(seed);let limit=5;
+ const selectedRecent=sampleGroup(recent,count(recent),rng,product,limit);limit-=selectedRecent.filter(p=>p.code===product).length;
+ const selectedOlder=sampleGroup(older,count(older),rng,product,limit);
+ selectedRecent.sort(compareStorage);selectedOlder.sort(compareStorage);
+ const selected=[...selectedRecent,...selectedOlder];const toKeys=new Set(selected.map(p=>p.number+'\x00'+p.code+'\x00'+p.mp));
+ const allBufferKeys=new Set(allBuffers.map(p=>p.number+'\x00'+p.code+'\x00'+p.mp));
+ return {selected,selectedRecent,selectedOlder,recent,older,unknown,allBuffers,eligibleCount:eligible.length,
+ sourcePallets:pallets.length,bufferCount:allBuffers.length,bufferUnique:allBufferKeys.size,
+ recentPercent:a,olderPercent:b,recentDays:cutoff,asOfDate,zone,supplier:txt(supplier),productCode:product,seed:Number(seed)>>>0,
+ priorityCount:selected.filter(p=>p.code===product&&!!product).length,uniqueCodes:new Set(selected.map(p=>p.code)).size,
+ selectedUnique:toKeys.size};
+}
+function formatRussianDate(iso){const m=txt(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}.${m[2]}.${m[1]}`:iso;}
+function sourceNumber(value){const n=num(value);return Number.isFinite(n)?n:txt(value);}
+function inspectionRow(p,asOf){const age=daysOnSite(p,asOf);return [sourceNumber(p.active),p.formed,sourceNumber(p.number),age===null?'':age,formatRussianDate(asOf),p.cep,'Снять на проверку',String(p.code),p.name,p.mo,p.mp,sourceNumber(p.quantity),sourceNumber(p.avgWeight),sourceNumber(p.defect),p.defectDate,p.note,'','',''];}
+return {txt,norm,detectHeaders,makePallet,parseDate,daysOnSite,isFreshProduce,isBuffer,validPallet,supplierMatches,compareStorage,INSPECTION_HEADERS,build,inspectionRow};
 });
