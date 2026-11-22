@@ -6,23 +6,23 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
-  <link rel="stylesheet" href="assets/styles.css?v=2.14">
-  <link rel="stylesheet" href="assets/ui-v27.css?v=2.14">
-  <link rel="stylesheet" href="assets/ui-v28.css?v=2.14">
-  <link rel="stylesheet" href="assets/store-claims.css?v=2.14">
-  <link rel="stylesheet" href="assets/macro.css?v=2.14">
-  <script defer src="assets/core.js?v=2.14"></script>
-  <script defer src="assets/etalon.js?v=2.14"></script>
-  <script defer src="assets/norms.js?v=2.14"></script>
-  <script defer src="assets/export.js?v=2.14"></script>
-  <script defer src="assets/report-builder.js?v=2.14"></script>
-  <script defer src="assets/app.js?v=2.14"></script>
-  <script defer src="assets/claims.js?v=2.14"></script>
-  <script defer src="assets/xlsx-lite.js?v=2.14"></script>
-  <script defer src="assets/store-claims-core.js?v=2.14"></script>
-  <script defer src="assets/store-claims.js?v=2.14"></script>
-  <script defer src="assets/macro-core.js?v=2.14"></script>
-  <script defer src="assets/macro.js?v=2.14"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=2.15">
+  <link rel="stylesheet" href="assets/ui-v27.css?v=2.15">
+  <link rel="stylesheet" href="assets/ui-v28.css?v=2.15">
+  <link rel="stylesheet" href="assets/store-claims.css?v=2.15">
+  <link rel="stylesheet" href="assets/macro.css?v=2.15">
+  <script defer src="assets/core.js?v=2.15"></script>
+  <script defer src="assets/etalon.js?v=2.15"></script>
+  <script defer src="assets/norms.js?v=2.15"></script>
+  <script defer src="assets/export.js?v=2.15"></script>
+  <script defer src="assets/report-builder.js?v=2.15"></script>
+  <script defer src="assets/app.js?v=2.15"></script>
+  <script defer src="assets/claims.js?v=2.15"></script>
+  <script defer src="assets/xlsx-lite.js?v=2.15"></script>
+  <script defer src="assets/store-claims-core.js?v=2.15"></script>
+  <script defer src="assets/store-claims.js?v=2.15"></script>
+  <script defer src="assets/macro-core.js?v=2.15"></script>
+  <script defer src="assets/macro.js?v=2.15"></script>
 </head>
 <body>
   <div class="shell">
@@ -44,7 +44,7 @@
     </aside>
     <button id="mobileBackdrop" class="mobile-backdrop" type="button" tabindex="-1" aria-label="Закрыть меню" hidden></button>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.14 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.15 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -221,12 +221,12 @@
         </section>
 
         <section class="view" id="view-macro">
-          <div class="page-title"><div><h1>Макрос · спуск палет</h1><p>Свежие овощи и фрукты: отдельно недавно на РЦ и давно на хранении. Накопление всех буферов в «Лист1».</p></div><span class="status-chip">2 выборки × 1,5%</span></div>
+          <div class="page-title"><div><h1>Макрос · спуск палет</h1><p>Свежие овощи и фрукты: отдельно недавно на РЦ и давно на хранении. Накопление всех буферов в «Лист1».</p></div><span class="status-chip">Проценты и количество — на выбор</span></div>
           <div class="macro-layout">
             <div class="macro-left">
               <div class="panel">
                 <div class="panel-title"><div class="step">1</div><div><h2>Загрузите сводный отчёт по палетам</h2><p>Один или несколько файлов .xlsx. Повторная загрузка обновляет накопительный список.</p></div></div>
-                <label class="file-drop macro-drop" id="macroZone" for="macroFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Сводный отчёт по палетам</strong><small>Скачать можно после расчёта двух групп</small><em id="macroFileStatus">Выберите или перетащите Excel</em></span><span class="file-action">Выбрать</span><input id="macroFile" type="file" accept=".xlsx" multiple hidden></label>
+                <label class="file-drop macro-drop" id="macroZone" for="macroFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Сводный отчёт по палетам</strong><small>Из одной выгрузки формируются два файла</small><em id="macroFileStatus">Выберите или перетащите Excel</em></span><span class="file-action">Выбрать</span><input id="macroFile" type="file" accept=".xlsx" multiple hidden></label>
                 <p class="field-note" id="macroSourceInfo">Данные находятся в памяти этого окна браузера, на сервер не отправляются.</p>
                 <button class="secondary-button macro-clear" id="macroClear" type="button">Очистить накопление</button>
               </div>
@@ -237,7 +237,10 @@
                   <label class="field">Давно на РЦ, %<input type="number" id="macroOlderRate" value="1.5" min="0.1" max="100" step="0.1"><small>От палет старше выбранного порога.</small></label>
                   <label class="field">Граница «недавно», дней<input type="number" id="macroRecentDays" value="3" min="0" max="365" step="1"><small>По дате формирования палеты; можно изменить.</small></label>
                   <label class="field">Дата проверки<input type="date" id="macroAsOf" required><small>Возраст рассчитывается на эту дату.</small></label>
-                  <label class="field">Код товара (необязательно)<input type="text" id="macroCode" inputmode="numeric" placeholder="3412070012" autocomplete="off"><small>Приоритет до 5 палет, внутри общих квот.</small></label>
+                  <label class="field">Код товара (необязательно)<input type="text" id="macroCode" inputmode="numeric" placeholder="3412070012" autocomplete="off"><small>Укажите код для отдельного приоритетного отбора.</small></label>
+                  <label class="field">Количество палет к спуску<input type="number" id="macroTotalPallets" placeholder="Авто по %" min="1" max="100000" step="1"><small>Пусто — считать по двум процентам. Число — точное общее количество, не более имеющихся палет.</small></label>
+                  <label class="field">Приоритетно по коду, палет<input type="number" id="macroPriorityQty" value="5" min="0" max="100000" step="1"><small>Только для указанного кода товара, в пределах общей выборки.</small></label>
+                  <label class="field">Смена для «Запроса на спуск»<select id="macroShift"><option value="День" selected>День</option><option value="Ночь">Ночь</option></select><small>Все выбранные палеты попадут в указанную смену; другая останется пустой.</small></label>
                   <label class="field">Поставщик (необязательно)<input type="text" id="macroSupplier" placeholder="Производитель из выгрузки" autocomplete="off"><small>Только если поставщик указан или подтверждён в Excel.</small></label>
                   <label class="field">Зона выборки<select id="macroZoneMode"><option value="all" selected>Все буферные зоны</option><option value="12-16">Только Бафер 12–16</option></select><small>«Лист1» всегда содержит все буферы, независимо от этого фильтра.</small></label>
                 </div>
@@ -246,6 +249,7 @@
               </div>
             </div>
             <aside class="macro-right"><div class="panel macro-side-panel"><div class="section-kicker">ПОРЯДОК РАБОТЫ</div><h2>Что формирует сайт</h2>
+              <div class="macro-rule"><strong>Два Excel по шаблонам</strong><p>№1 — «Проверка палет» и «Протокол отбора». №2 — «День», «Ночь», «Лист1» и «Унифицированный коментарий». Никаких дополнительных листов.</p></div>
               <div class="macro-rule"><strong>Недавно на РЦ</strong><p>Отдельные 1,5% палет свежих овощей и фруктов по возрасту на дату проверки.</p></div>
               <div class="macro-rule"><strong>Давно на РЦ</strong><p>Отдельные 1,5% из второй возрастной группы. Проценты независимы.</p></div>
               <div class="macro-rule"><strong>Лист1 — все буферы</strong><p>Все реальные пары «номер / МП» из загруженных файлов, без отбора по продукту и возрасту.</p></div>
@@ -254,12 +258,12 @@
             </div></aside>
           </div>
           <div class="panel macro-output" id="macroOutput" hidden>
-            <div class="macro-output-top"><div><div class="section-kicker">ПРОВЕРКА И СПУСК</div><h2>Выборки палет</h2><p id="macroSummary">—</p></div><div class="macro-export-actions"><button type="button" class="primary-button" id="macroExport" disabled>Импорт в Excel по шаблону ↓</button></div></div>
+            <div class="macro-output-top"><div><div class="section-kicker">ПРОВЕРКА И СПУСК</div><h2>Выборки палет</h2><p id="macroSummary">—</p></div><div class="macro-export-actions"><button type="button" class="primary-button" id="macroExport" disabled>Скачать таблицу №1 · Проверка палет ↓</button><button type="button" class="secondary-button" id="macroExportRequest" disabled>Скачать таблицу №2 · Запрос на спуск ↓</button></div></div>
             <div class="macro-kpis" id="macroKpis"></div><div class="macro-warning" id="macroWarnings" role="status"></div>
             <div class="table-scroll macro-table-scroll" role="region" tabindex="0" aria-label="Выборка палет"><table class="data-table macro-table"><thead><tr><th>Группа</th><th>номер</th><th>код</th><th>назв</th><th>МО</th><th>МП</th><th>Дней</th><th>Результат проверки</th></tr></thead><tbody id="macroRows"></tbody></table></div>
-            <div class="macro-export-footer"><span id="macroAuditInfo">—</span><a id="macroDownloadLink" class="macro-download" hidden>Если файл не скачался — нажмите здесь ↓</a></div>
+            <div class="macro-export-footer"><span id="macroAuditInfo">—</span><span class="macro-download-links"><a id="macroDownloadLink" class="macro-download" hidden>Повторно скачать таблицу №1 ↓</a><a id="macroRequestDownloadLink" class="macro-download" hidden>Повторно скачать таблицу №2 ↓</a></span></div>
           </div>
-          <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Важно:</strong> это автоматическая выборка в браузере, не VBA-макрос. В Excel выводятся только реально существующие палеты. После осмотра менеджер самостоятельно заполняет три поля проверки. Накопительный «Лист1» включает все буферы из загруженных файлов.</p></div>
+          <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Важно:</strong> это автоматическая выборка в браузере, не VBA-макрос. Оба Excel создаются по предоставленным образцам. Пустые колонки результата и унифицированного комментария заполняются менеджером только после осмотра. Накопительный «Лист1» содержит все реальные буферы из загруженных файлов.</p></div>
         </section>
 
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>

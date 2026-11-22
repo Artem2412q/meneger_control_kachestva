@@ -54,3 +54,7 @@
 .macro-table th:nth-child(8),.macro-table td:nth-child(8){width:135px}
 .macro-table td:nth-child(3){background:#f2f7fc;color:#1d4b71;font-weight:700}
 @media(max-width:620px){.macro-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* v2.15: explicit two-template actions and editable quantities */
+.macro-export-actions{flex-wrap:wrap;max-width:100%}.macro-export-actions>*{white-space:normal;text-align:center;max-width:100%}.macro-download-links{display:flex;flex-wrap:wrap;gap:14px}.macro-download-links>a[hidden]{display:none}
+@media(max-width:760px){.macro-export-actions{width:100%}.macro-export-actions>*{flex:1 1 240px}}

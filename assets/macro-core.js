@@ -1,4 +1,4 @@
-/* MAGNIT RC — pallet inspection selection 2.14.
+/* MAGNIT RC — pallet inspection selection 2.15.
    The source is the uploaded report; no synthetic pallets or post-inspection comments.
    Two independently adjustable sampling rates, reproducible random seed.
 */
@@ -68,7 +68,7 @@ function sampleGroup(pool,count,random,priorityCode,priorityRemaining){const pic
  if(picked.length<count)for(const p of shuffled(pool,random)){if(picked.length>=count)break;add(p);}
  return picked;
 }
-function build(pallets,{recentPercent=1.5,olderPercent=1.5,recentDays=3,asOfDate='',supplier='',productCode='',zone='all',seed=123456789}={}){
+function build(pallets,{recentPercent=1.5,olderPercent=1.5,recentDays=3,asOfDate='',supplier='',productCode='',zone='all',seed=123456789,totalPalettes=null,priorityQty=5}={}){
  const a=Number(recentPercent),b=Number(olderPercent),cutoff=Number(recentDays),date=isoToDate(asOfDate);
  if(date===null)throw Error('Укажите корректную дату проверки.');
  if(!Number.isFinite(a)||a<=0||a>100||!Number.isFinite(b)||b<=0||b>100)throw Error('Каждый процент должен быть больше 0 и не превышать 100.');
@@ -81,21 +81,51 @@ function build(pallets,{recentPercent=1.5,olderPercent=1.5,recentDays=3,asOfDate
  if(product&&!eligible.some(p=>p.code===product))throw Error('Код '+product+' не найден среди подходящих палет из загруженного Excel.');
  const recent=[],older=[],unknown=[];
  for(const p of eligible){const days=daysOnSite(p,asOfDate);if(days===null)unknown.push(p);else if(days<=cutoff)recent.push(p);else older.push(p);}
- const count=r=>Math.min(r.length,Math.ceil(r.length*(r===recent?a:b)/100));
- const rng=seeded(seed);let limit=5;
- const selectedRecent=sampleGroup(recent,count(recent),rng,product,limit);limit-=selectedRecent.filter(p=>p.code===product).length;
- const selectedOlder=sampleGroup(older,count(older),rng,product,limit);
+ const baseR=Math.min(recent.length,Math.ceil(recent.length*a/100));
+ const baseO=Math.min(older.length,Math.ceil(older.length*b/100));
+ let quotaRecent=baseR,quotaOlder=baseO;
+ if(totalPalettes!==null && totalPalettes!=='' && totalPalettes!==undefined){
+  const requested=Number(totalPalettes);
+  if(!Number.isInteger(requested)||requested<1||requested>100000)throw Error('Количество палет должно быть целым числом от 1 до 100 000.');
+  const target=Math.min(requested,recent.length+older.length);
+  const weight=(baseR+baseO)?baseR/(baseR+baseO):recent.length/(recent.length+older.length||1);
+  quotaRecent=Math.min(recent.length,Math.round(target*weight));
+  quotaOlder=Math.min(older.length,target-quotaRecent);
+  // Дозаполнение по фактической доступности, без превышения общего количества.
+  while(quotaRecent+quotaOlder<target){
+   if(quotaRecent<recent.length && (quotaOlder===older.length || quotaRecent/(recent.length||1)<=quotaOlder/(older.length||1)))quotaRecent++;
+   else if(quotaOlder<older.length)quotaOlder++;
+   else if(quotaRecent<recent.length)quotaRecent++;
+   else break;
+  }
+ }
+ const priorityRequested=Number(priorityQty);
+ if(!Number.isInteger(priorityRequested)||priorityRequested<0||priorityRequested>100000)throw Error('Количество приоритетных палет должно быть целым числом от 0 до 100 000.');
+ // Сохраняем общий объём и по возможности перемещаем квоту между возрастными группами,
+ // чтобы приоритетный код попал в выборку в указанном количестве.
+ if(product&&priorityRequested>0){
+  const pr=recent.filter(p=>p.code===product).length,po=older.filter(p=>p.code===product).length;
+  const required=Math.min(priorityRequested,quotaRecent+quotaOlder,pr+po);
+  while(Math.min(pr,quotaRecent)+Math.min(po,quotaOlder)<required){
+   if(po>quotaOlder && quotaRecent>Math.min(pr,quotaRecent) && quotaOlder<older.length){quotaRecent--;quotaOlder++;}
+   else if(pr>quotaRecent && quotaOlder>Math.min(po,quotaOlder) && quotaRecent<recent.length){quotaOlder--;quotaRecent++;}
+   else break;
+  }
+ }
+ const rng=seeded(seed);let limit=product?priorityRequested:0;
+ const selectedRecent=sampleGroup(recent,quotaRecent,rng,product,limit);limit-=selectedRecent.filter(p=>p.code===product).length;
+ const selectedOlder=sampleGroup(older,quotaOlder,rng,product,limit);
  selectedRecent.sort(compareStorage);selectedOlder.sort(compareStorage);
  const selected=[...selectedRecent,...selectedOlder];const toKeys=new Set(selected.map(p=>p.number+'\x00'+p.code+'\x00'+p.mp));
  const allBufferKeys=new Set(allBuffers.map(p=>p.number+'\x00'+p.code+'\x00'+p.mp));
  return {selected,selectedRecent,selectedOlder,recent,older,unknown,allBuffers,eligibleCount:eligible.length,
  sourcePallets:pallets.length,bufferCount:allBuffers.length,bufferUnique:allBufferKeys.size,
- recentPercent:a,olderPercent:b,recentDays:cutoff,asOfDate,zone,supplier:txt(supplier),productCode:product,seed:Number(seed)>>>0,
+ recentPercent:a,olderPercent:b,recentDays:cutoff,asOfDate,zone,supplier:txt(supplier),productCode:product,seed:Number(seed)>>>0, totalPalettes:totalPalettes==null||totalPalettes===''?null:Number(totalPalettes),priorityRequested:product?priorityRequested:0,
  priorityCount:selected.filter(p=>p.code===product&&!!product).length,uniqueCodes:new Set(selected.map(p=>p.code)).size,
  selectedUnique:toKeys.size};
 }
 function formatRussianDate(iso){const m=txt(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}.${m[2]}.${m[1]}`:iso;}
 function sourceNumber(value){const n=num(value);return Number.isFinite(n)?n:txt(value);}
 function inspectionRow(p,asOf){const age=daysOnSite(p,asOf);return [sourceNumber(p.active),p.formed,sourceNumber(p.number),age===null?'':age,formatRussianDate(asOf),p.cep,'Снять на проверку',String(p.code),p.name,p.mo,p.mp,sourceNumber(p.quantity),sourceNumber(p.avgWeight),sourceNumber(p.defect),p.defectDate,p.note,'','',''];}
-return {txt,norm,detectHeaders,makePallet,parseDate,daysOnSite,isFreshProduce,isBuffer,validPallet,supplierMatches,compareStorage,INSPECTION_HEADERS,build,inspectionRow};
+return {txt,norm,detectHeaders,makePallet,parseDate,daysOnSite,isFreshProduce,isBuffer,validPallet,supplierMatches,compareStorage,INSPECTION_HEADERS,build,inspectionRow,formatRussianDate};
 });
