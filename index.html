@@ -6,20 +6,23 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
-  <link rel="stylesheet" href="assets/styles.css?v=2.12">
-  <link rel="stylesheet" href="assets/ui-v27.css?v=2.12">
-  <link rel="stylesheet" href="assets/ui-v28.css?v=2.12">
-  <link rel="stylesheet" href="assets/store-claims.css?v=2.12">
-  <script defer src="assets/core.js?v=2.12"></script>
-  <script defer src="assets/etalon.js?v=2.12"></script>
-  <script defer src="assets/norms.js?v=2.12"></script>
-  <script defer src="assets/export.js?v=2.12"></script>
-  <script defer src="assets/report-builder.js?v=2.12"></script>
-  <script defer src="assets/app.js?v=2.12"></script>
-  <script defer src="assets/claims.js?v=2.12"></script>
-  <script defer src="assets/xlsx-lite.js?v=2.12"></script>
-  <script defer src="assets/store-claims-core.js?v=2.12"></script>
-  <script defer src="assets/store-claims.js?v=2.12"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=2.13">
+  <link rel="stylesheet" href="assets/ui-v27.css?v=2.13">
+  <link rel="stylesheet" href="assets/ui-v28.css?v=2.13">
+  <link rel="stylesheet" href="assets/store-claims.css?v=2.13">
+  <link rel="stylesheet" href="assets/macro.css?v=2.13">
+  <script defer src="assets/core.js?v=2.13"></script>
+  <script defer src="assets/etalon.js?v=2.13"></script>
+  <script defer src="assets/norms.js?v=2.13"></script>
+  <script defer src="assets/export.js?v=2.13"></script>
+  <script defer src="assets/report-builder.js?v=2.13"></script>
+  <script defer src="assets/app.js?v=2.13"></script>
+  <script defer src="assets/claims.js?v=2.13"></script>
+  <script defer src="assets/xlsx-lite.js?v=2.13"></script>
+  <script defer src="assets/store-claims-core.js?v=2.13"></script>
+  <script defer src="assets/store-claims.js?v=2.13"></script>
+  <script defer src="assets/macro-core.js?v=2.13"></script>
+  <script defer src="assets/macro.js?v=2.13"></script>
 </head>
 <body>
   <div class="shell">
@@ -31,6 +34,7 @@
         <button class="nav-button" data-tab="stock"><span class="nav-glyph">▤</span> Товарный запас <span class="nav-pill">01</span></button>
         <button class="nav-button" data-tab="etalon"><span class="nav-glyph">≡</span> Эталон ТП</button>
         <button class="nav-button" data-tab="critical"><span class="nav-glyph">!</span> Критика <span class="nav-pill">02</span></button>
+        <button class="nav-button" data-tab="macro"><span class="nav-glyph">▥</span> Макрос палет</button>
         <button class="nav-button" data-tab="returns"><span class="nav-glyph">⇄</span> Возвраты ГТ</button>
         <button class="nav-button" data-tab="claims"><span class="nav-glyph">▧</span> Претензии Гранд-Трейд</button>
         <button class="nav-button" data-tab="storeclaims"><span class="nav-glyph">▤</span> Претензии магазинов</button>
@@ -40,7 +44,7 @@
     </aside>
     <button id="mobileBackdrop" class="mobile-backdrop" type="button" tabindex="-1" aria-label="Закрыть меню" hidden></button>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.12 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.13 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -59,6 +63,7 @@
             <button class="feature-card critical-home" data-go="critical"><div class="feature-icon gt-icon">!</div><h3>Критика сегодня</h3><p>Отдельные две Excel-выгрузки за сегодняшний день. Отчёт и «Критика» могут иметь разные даты.</p><div class="feature-footer"><span class="tag neutral">Сегодня / сегодня</span><span class="arrow">↗</span></div></button>
             <button class="feature-card" data-go="claims"><div class="feature-icon claim-icon">▧</div><h3>Претензии Гранд-Трейд</h3><p>Заполните данные машины, заказа и товаров. Получите готовый текст претензии для копирования.</p><div class="feature-footer"><span class="tag neutral">Конструктор текста</span><span class="arrow">↗</span></div></button>
             <button class="feature-card" data-go="storeclaims"><div class="feature-icon stock-icon">▤</div><h3>Претензии магазинов МАГНИТ</h3><p>Excel за вчера и сегодня, массовость по товарам и характеристикам, производители и критика обращений.</p><div class="feature-footer"><span class="tag neutral">Массовость</span><span class="arrow">↗</span></div></button>
+            <button class="feature-card" data-go="macro"><div class="feature-icon stock-icon">▥</div><h3>Макрос палет</h3><p>Случайный отбор свежих овощей и фруктов для проверки, поиск по поставщику и коду, Excel по шаблону.</p><div class="feature-footer"><span class="tag neutral">Выборка палет</span><span class="arrow">↗</span></div></button>
           </div>
           <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Как работает:</strong> файлы обрабатываются в браузере. НТЗ, полный архив и Эталон уже встроены в сайт. Для ежедневных отчётов «Товарный запас» и «Критика» нужны только две Excel-выгрузки на соответствующую дату.</p></div>
         </section>
@@ -213,6 +218,48 @@
             </div>
           </div>
           <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Правило массовости:</strong> одно подтверждённое обращение = одна запись с уникальным guid. Массовые товары — от выбранного количества обращений. Критика группируется по сочетанию кода товара и характеристики. Исходный производитель сохраняется как в Excel; упоминания GT, ГТ, Гранд-Трейд, Grand Trade, Турции, а также ЧИНАР АМБАЛАЙ и пьюр кроп гида тиджарт (полные названия в справочнике) определяют «Гранд-Трейд». Поставщика можно исправить вручную у обращения или через справочник, после чего таблицы и Excel пересчитываются. Данные за другие даты не включаются.</p></div>
+        </section>
+
+        <section class="view" id="view-macro">
+          <div class="eyebrow">АВТОМАТИЗАЦИЯ / ПРОВЕРКА ПАЛЕТ</div>
+          <div class="page-title"><div><h1>Макрос · выборка палет</h1><p>Только свежие фрукты и овощи из фактической складской выгрузки. Случайный отбор и маршрут по МП.</p></div><span class="status-chip">Excel → проверочный лист</span></div>
+          <div class="macro-layout">
+            <div class="macro-left">
+              <div class="panel">
+                <div class="panel-title"><div class="step">1</div><div><h2>Загрузите сводный отчёт по палетам</h2><p>Файл формата .xlsx с колонками номер, код, назв, МО, МП.</p></div></div>
+                <label class="file-drop macro-drop" id="macroZone" for="macroFile" tabindex="0"><span class="file-picto">XLSX</span><span class="file-details"><strong>Сводный отчёт по палетам</strong><small>Название файла может быть любым</small><em id="macroFileStatus">Выберите Excel или перетащите его сюда</em></span><span class="file-action">Выбрать</span><input id="macroFile" type="file" accept=".xlsx" hidden></label>
+                <p class="field-note" id="macroSourceInfo">После загрузки сайт автоматически прочитает файл и сформирует первую выборку.</p>
+              </div>
+              <div class="panel">
+                <div class="panel-title"><div class="step">2</div><div><h2>Условия проверки</h2><p>Поставщик и код — необязательные поля. Пустые поля не ограничивают выборку.</p></div></div>
+                <div class="macro-fields">
+                  <label class="field">Приоритетный код товара<input type="text" id="macroCode" inputmode="numeric" pattern="[0-9]*" placeholder="Например, 3412070012" autocomplete="off"><small>При наличии кода он обязательно попадёт в выборку (до 5 палет).</small></label>
+                  <label class="field">Поставщик (необязательно)<input type="text" id="macroSupplier" placeholder="Поиск по производителю / приходу" autocomplete="off"><small>Если поставщик не указан в выгрузке, сайт не будет его угадывать.</small></label>
+                  <label class="field">Доля палет для проверки, %<input type="number" id="macroRate" value="3" step="0.5" min="0.1" max="100"><small>По умолчанию 3% от подходящих палет.</small></label>
+                  <label class="field">Зона отбора<select id="macroZoneMode"><option value="12-16" selected>Бафер 12–16 · как у менеджера</option><option value="all">Все буферные зоны</option></select><small>Складские адреса сортируются по маршруту МП.</small></label>
+                </div>
+                <div class="macro-actions"><button class="primary-button" id="macroBuild" type="button" disabled>Сформировать выборку <span>→</span></button><button class="secondary-button" id="macroReroll" type="button" disabled>Случайная выборка заново ↻</button></div>
+                <p class="field-note" id="macroMessage" role="status" aria-live="polite">Загрузите Excel, чтобы начать.</p>
+              </div>
+            </div>
+            <aside class="macro-right">
+              <div class="panel macro-side-panel"><div class="section-kicker">ПРАВИЛА ВЫБОРКИ</div><h2>Что попадёт в проверку</h2>
+                <div class="macro-rule"><strong>Только овощи и фрукты</strong><p>Свежие овощи, фрукты и зелень. Заморозка, консервация, готовые блюда и прочие продукты исключены.</p></div>
+                <div class="macro-rule"><strong>Только реальные палеты</strong><p>Номер, товар, адрес МО/МП и положительный остаток обязательно присутствуют в исходном Excel.</p></div>
+                <div class="macro-rule"><strong>Проверяемая случайность</strong><p>Выбираются случайные товарные коды, затем палеты. Сохраняется зерно генератора, чтобы можно было повторить выборку.</p></div>
+                <div class="macro-rule"><strong>Результат осмотра — пустой</strong><p>Поле «Результат проверки» заполняется сотрудником после физической проверки, а не программой.</p></div>
+              </div>
+            </aside>
+          </div>
+          <div class="panel macro-output" id="macroOutput" hidden>
+            <div class="macro-output-top"><div><div class="section-kicker">РЕЗУЛЬТАТ АВТОМАТИЗАЦИИ</div><h2>Проверочный лист палет</h2><p id="macroSummary">Результаты фактической выборки</p></div><div class="macro-export-actions"><button type="button" class="primary-button" id="macroExport" disabled>Импорт в Excel по шаблону ↓</button></div></div>
+            <div class="macro-kpis" id="macroKpis"></div>
+            <div class="macro-warning" id="macroWarnings" role="status"></div>
+            <p class="store-scroll-hint">↔ На телефоне и при увеличенном масштабе таблица прокручивается по горизонтали. Текст не перекрывает ячейки.</p>
+            <div class="table-scroll macro-table-scroll" role="region" tabindex="0" aria-label="Выборка палет"><table class="data-table macro-table"><thead><tr><th>номер</th><th>код</th><th>назв</th><th>МО</th><th>МП</th><th>Результат проверки</th></tr></thead><tbody id="macroRows"></tbody></table></div>
+            <div class="macro-export-footer"><span id="macroAuditInfo">—</span><a id="macroDownloadLink" class="macro-download" hidden>Если файл не скачался — нажмите здесь ↓</a></div>
+          </div>
+          <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Важно:</strong> раздел «Макрос» автоматизирует действия в браузере, это не VBA-код Excel. Выгружается обычный проверочный файл .xlsx с колонками из образца менеджера. Продукты не подставляются по Эталону или другим справочникам; все палеты берутся только из загруженной таблицы.</p></div>
         </section>
 
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>

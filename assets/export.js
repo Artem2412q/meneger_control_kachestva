@@ -8,14 +8,14 @@ const enc=new TextEncoder();
 const color={blue:'238FFA',blueBody:'E9F3FF',green:'B4E67D',greenBody:'EDF9E1',ink:'112A44',white:'FFFFFF',red:'FFD9D9',grey:'EEF2F7'};
 function stylesXml(){
  const fills=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>',...[
- color.blue,color.blueBody,color.green,color.greenBody,color.red,color.grey].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`)].join('');
+ color.blue,color.blueBody,color.green,color.greenBody,color.red,color.grey,'D4DCE5'].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`)].join('');
  const fonts=['<font><sz val="10"/><color rgb="FF1F2937"/><name val="Aptos"/></font>',
  '<font><b/><sz val="10"/><color rgb="FF0B1525"/><name val="Aptos"/></font>',
  '<font><b/><sz val="10"/><color rgb="FF16391C"/><name val="Aptos"/></font>'].join('');
  const borders='<border><left/><right/><top/><bottom/><diagonal/></border><border><left style="hair"><color rgb="FFD8E2EC"/></left><right style="hair"><color rgb="FFD8E2EC"/></right><top style="hair"><color rgb="FFD8E2EC"/></top><bottom style="hair"><color rgb="FFD8E2EC"/></bottom><diagonal/></border>';
  const xf=(fill,font=0,number=0,wrap=false)=>`<xf numFmtId="${number}" fontId="${font}" fillId="${fill}" borderId="1" xfId="0" applyFill="1" applyAlignment="1"${number?' applyNumberFormat="1"':''}><alignment horizontal="center" vertical="center"${wrap?' wrapText="1"':''}/></xf>`;
- const xfs=[xf(0),xf(3,0),xf(2,1,0,true),xf(4,2,0,true),xf(5,0),xf(6,0),xf(7,0),xf(2,1,0,true),xf(2,1,10,true),xf(3,0,2),xf(5,0,2),xf(6,0,2),xf(3,0,10),xf(5,0,10),xf(0,0,2),xf(0,0,10)].join('');
- return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3">${fonts}</fonts><fills count="8">${fills}</fills><borders count="2">${borders}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="16">${xfs}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+ const xfs=[xf(0),xf(3,0),xf(2,1,0,true),xf(4,2,0,true),xf(5,0),xf(6,0),xf(7,0),xf(2,1,0,true),xf(2,1,10,true),xf(3,0,2),xf(5,0,2),xf(6,0,2),xf(3,0,10),xf(5,0,10),xf(0,0,2),xf(0,0,10),xf(8,1,0,true),xf(0,0,0,true)].join('');
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3">${fonts}</fonts><fills count="9">${fills}</fills><borders count="2">${borders}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="18">${xfs}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 }
 function cellXml(value,row,col,style){
  const ref=colName(col)+row;
@@ -41,7 +41,7 @@ function sheetXml(def){
    const overMax=(typeof maxComment==='number'&&maxComment>0)||maxComment==='Без расхода';
    let contents='';for(let c=0;c<row.length;c++){
      const item=row[c];
-     let style=isHead?(isReport?((isMain?[10,11,14,15]:[9,10,13,14]).includes(c)?3:2):7):(c===0?1:0);
+     let style=def.type==='pallet'?(isHead?16:17):(isHead?(isReport?((isMain?[10,11,14,15]:[9,10,13,14]).includes(c)?3:2):7):(c===0?1:0));
      if(!isHead&&isReport){
        // Excel built-in format 2 = 0.00; format 10 = 0.00%.
        // The original formula/cache retains full precision, only the visible format changes.
@@ -56,13 +56,15 @@ function sheetXml(def){
      }
      contents+=cellXml(item,ri+1,c,style);
    }
-   if(contents)table+=`<row r="${ri+1}" ht="${isHead?58:19}" customHeight="1">${contents}</row>`;
+   if(contents)table+=`<row r="${ri+1}" ht="${def.type==='pallet'?(isHead?26:22):(isHead?58:19)}" customHeight="1">${contents}</row>`;
  }
  const widths=def.widths||[];
  const cols=Array.from({length:maxCol},(_,c)=>`<col min="${c+1}" max="${c+1}" width="${widths[c]|| (c===1?57:c===0?17:18)}" customWidth="1"/>`).join('');
  const ref=`A1:${colName(maxCol-1)}${Math.max(all.length,1)}`;
- const filter=def.noFilter?'':`<autoFilter ref="${ref}"/>`;
- return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="${ref}"/><sheetViews><sheetView workbookViewId="0"><pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${cols}</cols><sheetData>${table}</sheetData>${filter}</worksheet>`;
+ const filter=def.noFilter||def.type==='pallet'?'':`<autoFilter ref="${ref}"/>`;
+ const printSetup=def.type==='pallet'?'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>':'';
+ const printFooter=def.type==='pallet'?'<printOptions horizontalCentered="1"/><pageMargins left="0.25" right="0.25" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="1"/>':'';
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${printSetup}<dimension ref="${ref}"/><sheetViews><sheetView workbookViewId="0"><pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${cols}</cols><sheetData>${table}</sheetData>${filter}${printFooter}</worksheet>`;
 }
 const crcTable=(()=>{const a=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;a[i]=c>>>0;}return a;})();
 function crc32(bytes){let n=0xFFFFFFFF;for(const b of bytes)n=crcTable[(n^b)&0xFF]^(n>>>8);return (n^0xFFFFFFFF)>>>0;}
