@@ -1,0 +1,42 @@
+/* MAGNIT RC 2.9 — store claims: same restrained light visual language as 2.8 */
+.store-top-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(310px,1fr);gap:15px;align-items:stretch}
+.store-upload{margin:0 0 13px;cursor:pointer}
+.store-upload .file-details{min-width:0;overflow:hidden}
+#storeClaimsFileNames{overflow-wrap:anywhere}
+.store-settings-panel,.store-file-panel{min-width:0}
+.store-params{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.store-params .field{display:flex;flex-direction:column;gap:8px}
+.store-actions{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 13px}
+.store-download{display:inline-flex;padding:10px 0;color:#a71e2d;font-size:11px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+#storeClaimsMessage.issue{color:#a21e2e;font-weight:650}
+.store-dashboard{margin-top:26px;display:grid;gap:14px}
+.store-dashboard[hidden]{display:none}
+.store-result-head{display:flex;align-items:end;justify-content:space-between;gap:18px;padding:3px 1px}
+.store-result-head h2{font-size:21px;margin:5px 0}
+.store-result-head p{font-size:11px;color:#85909e}
+.store-search-wrap{display:grid;gap:6px;width:min(410px,100%)}
+.store-search-wrap label{font-size:10px;color:#758192}
+.store-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.store-kpi{background:#fff;border:1px solid #e2e6eb;border-radius:7px;padding:16px 14px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.store-kpi span{font-size:10px;color:#758192}
+.store-kpi strong{font-size:23px;color:#273246;font-weight:750;font-variant-numeric:tabular-nums}
+.store-warning{margin:0;padding:12px 14px;background:#fbf8f3;color:#7b6750;border:1px solid #ece5d6;border-radius:6px;font-size:11px;line-height:1.65}
+.store-warning:empty{display:none}
+.store-table-panel{min-width:0;padding:19px 20px}
+.store-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px}
+.store-panel-heading h2{font-size:15px;margin:0 0 5px}
+.store-panel-heading p{font-size:10.5px;color:#8a95a3}
+.store-table{min-width:980px}
+.store-table th{white-space:nowrap;text-align:left;vertical-align:middle;background:#f7f8fa;color:#647081;font-weight:650}
+.store-table td{color:#364153;vertical-align:top;line-height:1.5;max-width:330px;overflow-wrap:anywhere}
+.store-table td.store-code{white-space:nowrap;color:#235b90;font-weight:700;background:#edf5fc}
+.store-table td.store-name{font-weight:650;min-width:180px}
+.store-table td.store-number{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.store-detail-button{border:1px solid #dbe1e8;color:#536174;background:#fff;border-radius:5px;white-space:nowrap;font:inherit;font-weight:650;cursor:pointer;padding:7px 9px}
+.store-detail-button:hover{border-color:#c98a91;color:#a81f2b;background:#fff9f9}
+.store-empty{text-align:center;padding:22px!important;color:#8a95a3!important}
+@media(max-width:1300px){.store-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1060px){.store-top-grid{grid-template-columns:1fr}.store-result-head{align-items:stretch;flex-direction:column}.store-search-wrap{width:100%}}
+@media(max-width:650px){.store-params{grid-template-columns:1fr}.store-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.store-table-panel{padding:15px 13px}.store-actions>*{flex:1}.store-result-head h2{font-size:18px}}
+
+.store-clear{display:block;padding:6px 0 10px;font-size:11px;color:#a42a35;text-decoration:underline;text-underline-offset:3px}

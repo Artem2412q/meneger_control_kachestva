@@ -31,7 +31,7 @@
     const node=$('stockExportHint');if(!node)return;
     if(!state.files.saldo||!state.files.service)node.textContent='Шаг 1: выберите обе исходные таблицы Excel.';
     else if(!state.sources)node.textContent='Шаг 2: нажмите «Проверить и объединить файлы» и дождитесь окончания обработки.';
-    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.7 и перезагрузите страницу (Ctrl+F5).';
+    else if(!state.template||!Object.keys(state.template.norms||{}).length)node.textContent='Встроенный НТЗ не загрузился. Обновите файлы сайта до версии 2.8 и перезагрузите страницу (Ctrl+F5).';
     else if(!state.report?.records?.length)node.textContent='Проверьте дату отчёта и состав товарных позиций: пока нет строк для выгрузки.';
     else node.textContent='Отчёт готов. Нажмите «Скачать готовый отчёт Excel». Если браузер блокирует загрузку — появится резервная ссылка.';
   }
@@ -118,7 +118,7 @@
     return new Promise((resolve,reject)=>{
       if(typeof Worker === 'undefined')return reject(new Error('Этот браузер не поддерживает обработку файлов в отдельном потоке.'));
       let worker;
-      try{worker=new Worker('assets/worker.js?v=2.7');}catch(e){return reject(e);}
+      try{worker=new Worker('assets/worker.js?v=2.8');}catch(e){return reject(e);}
       let done=false;
       worker.onmessage=e=>{
         const msg=e.data;
@@ -297,7 +297,7 @@
     const criticalSelect=$('criticalNormSnapshot');
     criticalSelect.replaceChildren(...[...select.options].map(o=>new Option(o.text,o.value)));
     criticalSelect.value=select.value;criticalSelect.disabled=!present;
-    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.7).';
+    $('templateStatus').textContent=present?`${template.userTemplate?'Обновлённый':'Встроенный'} НТЗ: ${Object.keys(template.norms).length} кодов · ${template.flowerCodes?.length||0} кодов цветов`: 'Встроенный НТЗ не найден — обновите сайт (v2.8).';
     $('criticalTemplateStatus').textContent=present?`НТЗ подключён автоматически: ${Object.keys(Core.selectedNorms(template,select.value)).length} кодов; ${select.options[select.selectedIndex].text}. Ежедневно загружайте только ДВА Excel.`:'Не удалось прочитать встроенный НТЗ. Проверьте публикацию assets/norms.js.';
     $('archiveInfo').textContent=present?`Встроенный архив: ${(template.snapshots||[]).map(s=>`${s.date} (${Object.keys(s.norms||{}).length} товаров)`).join('; ')||'не найден'}. Архив войдёт в итоговый Excel.`:'Не удалось подключить архив НТЗ.';
     $('clearTemplate').hidden=!template?.userTemplate;updateChecks();updateExportHint();updateCriticalExportState();
@@ -352,7 +352,7 @@
     if(!validSaldo||!validService)reason='Шаг 1: выберите ДВА отдельных Excel для Критики с точными названиями.';
     else if(!state.criticalSources)reason='Шаг 2: нажмите «Проверить критику за сегодня» и дождитесь обработки.';
     else if(!dates.includes(today))reason=`Выгрузка НЕ за сегодня (${today}). Даты уровня сервиса: ${dates.join(', ')||'не найдены'}. Критика за вчера не скачивается — загрузите два файла за сегодня.`;
-    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.7).';
+    else if(!normCount)reason='Встроенный НТЗ не найден. Проверьте, что обновили на GitHub файл assets/norms.js (версия 2.8).';
     else if(!state.criticalReport?.records?.length)reason='По выбранному режиму не найдено товарных позиций. Переключите «Состав критики» на «Эталон — подтверждённые позиции» или «Все позиции из выгрузок».';
     else if(state.criticalReport.date!==today)reason='Дата Критики изменилась. Заново обработайте две сегодняшние выгрузки.';
     $('exportCritical').disabled=!!reason;
