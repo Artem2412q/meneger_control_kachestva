@@ -14,6 +14,21 @@ const ruDate=iso=>iso&&/^\d{4}-\d{2}-\d{2}$/.test(iso)?iso.slice(8)+'.'+iso.slic
 const previousDate=iso=>{if(!validISO(iso))throw Error('Выберите корректную дату отчёта.');const [y,m,d]=iso.split('-').map(Number);const day=new Date(Date.UTC(y,m-1,d)-86400000);return day.toISOString().slice(0,10);};
 const numeric=v=>{if(v===null||v===undefined||text(v)==='')return null;const n=Number(typeof v==='string'?v.replace(/\s/g,'').replace(',','.'):v);return Number.isFinite(n)?n:null;};
 const keyText=s=>text(s).toLocaleLowerCase('ru-RU');
+// Agreed business rule: GT, BGT, PGT, ГТ, Гранд-Трейд, Grand Trade and Turkey
+// (including source spelling/case variants) all identify supplier Гранд-Трейд.
+// This is a *derived supplier*, not a rewrite of the manufacturer column.
+const GRAND_TRADE='Гранд-Трейд';
+const GT_SUPPLIER_RE=/(?:гранд[\s._\-–—]*трейд|grand[\s._\-–—]*trade|(?:^|[^а-яё])турци(?:я|и|ю|ей)(?=$|[^а-яё])|(?:^|[^a-z])(?:turkey|turkiye|türkiye)(?=$|[^a-z])|(?:^|[^a-zа-яё])[a-z]{0,4}gt(?=$|[^a-zа-яё])|(?:^|[^а-яё])гт(?=$|[^а-яё]|адг))/iu;
+function canonicalSupplier(value){return GT_SUPPLIER_RE.test(text(value))?GRAND_TRADE:'';}
+function supplierFromRow(headers,row){
+  // Prefer explicit supplier/producer fields; still recognize an explicit GT/Turkey
+  // mention anywhere else in the actual row, as requested, without inventing data.
+  const preferred=['Производитель','Наименование КА','Поставщик','Контрагент','Страна происхождения','Страна'];
+  const order=[...preferred.map(name=>headers.findIndex(h=>text(h)===name)).filter(i=>i>=0),...headers.map((_,i)=>i)];
+  const used=new Set();
+  for(const i of order){if(used.has(i))continue;used.add(i);const value=text(row[i]);if(canonicalSupplier(value))return {supplier:GRAND_TRADE,supplierEvidence:headers[i]+': '+value};}
+  return {supplier:'',supplierEvidence:''};
+}
 function parseTable(table,source='выгрузка'){
   const [headers,...rows]=table;
   if(!Array.isArray(headers))throw Error('В Excel отсутствует строка с названиями столбцов.');
@@ -31,9 +46,11 @@ function parseTable(table,source='выгрузка'){
     const date=dateISO(val(row,'Дата обращения'));
     if(!date){invalidDate++;continue;}
     const guid=text(val(row,'guid')),id=text(val(row,'id'));
+    const {supplier,supplierEvidence}=supplierFromRow(headers,row);
     const obj={guid,id,code,name,date,
       characteristic:text(val(row,'Характеристика товара/прихода')),
       manufacturer:text(val(row,'Производитель')),
+      supplier,supplierEvidence,
       storeCode:text(val(row,'Код ТО')),
       store:text(val(row,'Наименование ТО')),
       branch:text(val(row,'Филиал')),
@@ -54,14 +71,14 @@ function aggregate(records,{asOf,threshold=2,query=''}={}){
   const yesterday=previousDate(asOf),q=keyText(query);const selected=records.filter(r=>r.date===asOf||r.date===yesterday);
   const excludedDate=records.length-selected.length;
   const groups=new Map(),characteristics=new Map();
-  const create=(key,r)=>({key,code:r.code,name:r.name,characteristic:r.characteristic,complaints:[],count:0,stores:new Set(),manufacturers:new Set(),dates:new Map(),badQuantity:0,hasQuantity:false});
-  const add=(g,r)=>{g.complaints.push(r);g.count++;if(r.storeCode)g.stores.add(r.storeCode);else if(r.store)g.stores.add('name:'+r.store);if(r.manufacturer)g.manufacturers.add(r.manufacturer);g.dates.set(r.date,(g.dates.get(r.date)||0)+1);if(r.badQuantity!==null){g.hasQuantity=true;g.badQuantity+=r.badQuantity;}};
+  const create=(key,r)=>({key,code:r.code,name:r.name,characteristic:r.characteristic,complaints:[],count:0,stores:new Set(),manufacturers:new Set(),suppliers:new Set(),dates:new Map(),badQuantity:0,hasQuantity:false});
+  const add=(g,r)=>{g.complaints.push(r);g.count++;if(r.storeCode)g.stores.add(r.storeCode);else if(r.store)g.stores.add('name:'+r.store);if(r.manufacturer)g.manufacturers.add(r.manufacturer);if(r.supplier)g.suppliers.add(r.supplier);g.dates.set(r.date,(g.dates.get(r.date)||0)+1);if(r.badQuantity!==null){g.hasQuantity=true;g.badQuantity+=r.badQuantity;}};
   for(const r of selected){
     if(!groups.has(r.code))groups.set(r.code,create(r.code,r));add(groups.get(r.code),r);
     const k=r.code+'\u0000'+keyText(r.characteristic);if(!characteristics.has(k))characteristics.set(k,create(k,r));add(characteristics.get(k),r);
   }
   const sorted=a=>[...a].sort((x,y)=>y.count-x.count||x.code.localeCompare(y.code,'ru'));
-  const matches=g=>!q||keyText(g.code+' '+g.name+' '+g.characteristic+' '+[...g.manufacturers].join(' ')+' '+g.complaints.map(r=>r.store+' '+r.storeCode+' '+r.comment).join(' ')).includes(q);
+  const matches=g=>!q||keyText(g.code+' '+g.name+' '+g.characteristic+' '+[...g.manufacturers].join(' ')+' '+[...g.suppliers].join(' ')+' '+g.complaints.map(r=>r.store+' '+r.storeCode+' '+r.comment).join(' ')).includes(q);
   const totalGroup=sorted(groups.values()),totalCharacteristics=sorted(characteristics.values());
   const thresh=Math.max(1,Math.floor(Number(threshold)||2));
   return {asOf,yesterday,selected,excludedDate,
@@ -71,7 +88,8 @@ function aggregate(records,{asOf,threshold=2,query=''}={}){
       products:groups.size,massProducts:totalGroup.filter(g=>g.count>=thresh).length,
       massIssues:totalCharacteristics.filter(g=>g.count>=thresh).length,
       stores:new Set(selected.map(r=>r.storeCode||r.store).filter(Boolean)).size,
+      grandTrade:selected.filter(r=>r.supplier===GRAND_TRADE).length,
       excludedDate,threshold:thresh}};
 }
-return {REQUIRED,text,dateISO,ruDate,previousDate,parseTable,merge,aggregate};
+return {REQUIRED,text,dateISO,ruDate,previousDate,canonicalSupplier,supplierFromRow,parseTable,merge,aggregate};
 });
