@@ -6,20 +6,20 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
-  <link rel="stylesheet" href="assets/styles.css?v=2.11">
-  <link rel="stylesheet" href="assets/ui-v27.css?v=2.11">
-  <link rel="stylesheet" href="assets/ui-v28.css?v=2.11">
-  <link rel="stylesheet" href="assets/store-claims.css?v=2.11">
-  <script defer src="assets/core.js?v=2.11"></script>
-  <script defer src="assets/etalon.js?v=2.11"></script>
-  <script defer src="assets/norms.js?v=2.11"></script>
-  <script defer src="assets/export.js?v=2.11"></script>
-  <script defer src="assets/report-builder.js?v=2.11"></script>
-  <script defer src="assets/app.js?v=2.11"></script>
-  <script defer src="assets/claims.js?v=2.11"></script>
-  <script defer src="assets/xlsx-lite.js?v=2.11"></script>
-  <script defer src="assets/store-claims-core.js?v=2.11"></script>
-  <script defer src="assets/store-claims.js?v=2.11"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=2.12">
+  <link rel="stylesheet" href="assets/ui-v27.css?v=2.12">
+  <link rel="stylesheet" href="assets/ui-v28.css?v=2.12">
+  <link rel="stylesheet" href="assets/store-claims.css?v=2.12">
+  <script defer src="assets/core.js?v=2.12"></script>
+  <script defer src="assets/etalon.js?v=2.12"></script>
+  <script defer src="assets/norms.js?v=2.12"></script>
+  <script defer src="assets/export.js?v=2.12"></script>
+  <script defer src="assets/report-builder.js?v=2.12"></script>
+  <script defer src="assets/app.js?v=2.12"></script>
+  <script defer src="assets/claims.js?v=2.12"></script>
+  <script defer src="assets/xlsx-lite.js?v=2.12"></script>
+  <script defer src="assets/store-claims-core.js?v=2.12"></script>
+  <script defer src="assets/store-claims.js?v=2.12"></script>
 </head>
 <body>
   <div class="shell">
@@ -40,7 +40,7 @@
     </aside>
     <button id="mobileBackdrop" class="mobile-backdrop" type="button" tabindex="-1" aria-label="Закрыть меню" hidden></button>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.11 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.12 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -180,6 +180,21 @@
               <a class="store-download" id="storeClaimsDownloadLink" hidden>Если файл не скачался — нажмите здесь ↓</a>
             </div>
           </div>
+          <details class="panel store-supplier-panel" id="storeSupplierPanel">
+            <summary><span><strong>Справочник поставщиков</strong><small>Добавить или исправить наименование поставщика · изменения сохраняются в этом браузере</small></span><span class="store-supplier-summary-action">Редактировать ↘</span></summary>
+            <div class="store-supplier-body">
+              <p class="field-note">Если производитель в Excel записан иначе, укажите его исходное название и нужного поставщика. Правило применяется ко всем подходящим обращениям, в том числе после повторной загрузки файлов. Исходный «Производитель» остаётся без изменений.</p>
+              <form id="storeSupplierForm" class="store-supplier-form">
+                <label class="field">Как написано в Excel<input type="text" id="storeSupplierPattern" required maxlength="250" placeholder="Название производителя / вариант написания"></label>
+                <label class="field">Поставщик в отчёте<input type="text" id="storeSupplierTarget" required maxlength="140" value="Гранд-Трейд" placeholder="Например, Гранд-Трейд"></label>
+                <button class="primary-button" type="submit">Сохранить соответствие</button>
+              </form>
+              <p class="field-note store-supplier-feedback" id="storeSupplierFeedback" role="status" aria-live="polite"></p>
+              <div class="store-supplier-list" id="storeSupplierRulesList" aria-label="Правила сопоставления поставщиков"></div>
+              <div class="store-supplier-backup"><button type="button" class="secondary-button" id="storeSupplierDownload">Скачать справочник JSON ↓</button><label class="secondary-button store-supplier-import">Загрузить справочник JSON<input id="storeSupplierImport" type="file" accept=".json,application/json" hidden></label></div>
+              <p class="field-note">Правки сохраняются локально в текущем браузере, а не в GitHub. Для переноса на другое устройство скачайте JSON и загрузите его там. Без сохранённой копии очистка данных браузера удалит пользовательские правки.</p>
+            </div>
+          </details>
           <div class="store-dashboard" id="storeClaimsDashboard" hidden>
             <div class="store-result-head"><div><span class="section-kicker">АНАЛИТИКА ОБРАЩЕНИЙ</span><h2>Массовость и критика</h2><p>Период: <strong id="storeClaimsPeriod">—</strong>. Только подтверждённые записи из Excel.</p></div><div class="store-search-wrap"><label for="storeClaimsSearch">Поиск по товару, характеристике, поставщику, производителю или магазину</label><input id="storeClaimsSearch" class="search-box" type="search" placeholder="Код, товар, дефект, поставщик, производитель..."></div></div>
             <div class="store-kpis" id="storeClaimsKpis"></div>
@@ -194,10 +209,10 @@
             </div>
             <div class="panel store-table-panel" id="storeClaimsDetailPanel" hidden><div class="store-panel-heading"><div><h2 id="storeClaimsDetailTitle">Обращения</h2><p id="storeClaimsDetailMeta">Реальные строки выгрузки</p></div><button class="secondary-button" id="storeClaimsDetailClose" type="button">Закрыть детали</button></div>
               <p class="store-scroll-hint">↔ Подробности можно прокручивать по горизонтали; полные значения показаны без обрезки.</p>
-              <div class="table-scroll store-table-scroll" tabindex="0" role="region" aria-label="Подробности обращений — прокручиваемая таблица"><table class="data-table store-table store-table-detail"><colgroup><col style="width:155px"><col style="width:170px"><col style="width:270px"><col style="width:170px"><col style="width:145px"><col style="width:250px"><col style="width:125px"><col style="width:340px"></colgroup><thead><tr><th>Дата обращения</th><th>Характеристика</th><th>Производитель</th><th>Поставщик</th><th>Код магазина</th><th>Магазин</th><th>Кол-во брака</th><th>Комментарий ТО</th></tr></thead><tbody id="storeClaimsDetailRows"></tbody></table></div>
+              <div class="table-scroll store-table-scroll" tabindex="0" role="region" aria-label="Подробности обращений — прокручиваемая таблица"><table class="data-table store-table store-table-detail"><colgroup><col style="width:155px"><col style="width:170px"><col style="width:270px"><col style="width:265px"><col style="width:145px"><col style="width:250px"><col style="width:125px"><col style="width:340px"></colgroup><thead><tr><th>Дата обращения</th><th>Характеристика</th><th>Производитель</th><th>Поставщик</th><th>Код магазина</th><th>Магазин</th><th>Кол-во брака</th><th>Комментарий ТО</th></tr></thead><tbody id="storeClaimsDetailRows"></tbody></table></div>
             </div>
           </div>
-          <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Правило массовости:</strong> одно подтверждённое обращение = одна запись с уникальным guid. Массовые товары — от выбранного количества обращений. Критика группируется по сочетанию кода товара и характеристики. Исходный производитель сохраняется как в Excel; упоминания GT, ГТ, Гранд-Трейд, Grand Trade и Турции в исходном обращении определяют поставщика «Гранд-Трейд». Данные за другие даты не включаются.</p></div>
+          <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Правило массовости:</strong> одно подтверждённое обращение = одна запись с уникальным guid. Массовые товары — от выбранного количества обращений. Критика группируется по сочетанию кода товара и характеристики. Исходный производитель сохраняется как в Excel; упоминания GT, ГТ, Гранд-Трейд, Grand Trade, Турции, а также ЧИНАР АМБАЛАЙ и пьюр кроп гида тиджарт (полные названия в справочнике) определяют «Гранд-Трейд». Поставщика можно исправить вручную у обращения или через справочник, после чего таблицы и Excel пересчитываются. Данные за другие даты не включаются.</p></div>
         </section>
 
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>

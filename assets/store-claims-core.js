@@ -14,20 +14,59 @@ const ruDate=iso=>iso&&/^\d{4}-\d{2}-\d{2}$/.test(iso)?iso.slice(8)+'.'+iso.slic
 const previousDate=iso=>{if(!validISO(iso))throw Error('Выберите корректную дату отчёта.');const [y,m,d]=iso.split('-').map(Number);const day=new Date(Date.UTC(y,m-1,d)-86400000);return day.toISOString().slice(0,10);};
 const numeric=v=>{if(v===null||v===undefined||text(v)==='')return null;const n=Number(typeof v==='string'?v.replace(/\s/g,'').replace(',','.'):v);return Number.isFinite(n)?n:null;};
 const keyText=s=>text(s).toLocaleLowerCase('ru-RU');
-// Agreed business rule: GT, BGT, PGT, ГТ, Гранд-Трейд, Grand Trade and Turkey
-// (including source spelling/case variants) all identify supplier Гранд-Трейд.
-// This is a *derived supplier*, not a rewrite of the manufacturer column.
+// Original manufacturer is never modified; a derived supplier can be corrected locally.
 const GRAND_TRADE='Гранд-Трейд';
+const DEFAULT_SUPPLIER_RULES=Object.freeze([
+  Object.freeze({pattern:'ЧИНАР АМБАЛАЙ НАКЛИЙАТ ТУРИЗМ ИНСААТ МАКИНЕ ПЕТРОЛ ТАРИМ УРУНЛЕРИ САНАЙИ ВЕ ТИКАРЕТ ЛИМИТЕД СИРКЕТИ',supplier:GRAND_TRADE}),
+  Object.freeze({pattern:'пьюр кроп гида тиджарт аноним шикркти',supplier:GRAND_TRADE})
+]);
 const GT_SUPPLIER_RE=/(?:гранд[\s._\-–—]*трейд|grand[\s._\-–—]*trade|(?:^|[^а-яё])турци(?:я|и|ю|ей)(?=$|[^а-яё])|(?:^|[^a-z])(?:turkey|turkiye|türkiye)(?=$|[^a-z])|(?:^|[^a-zа-яё])[a-z]{0,4}gt(?=$|[^a-zа-яё])|(?:^|[^а-яё])гт(?=$|[^а-яё]|адг))/iu;
-function canonicalSupplier(value){return GT_SUPPLIER_RE.test(text(value))?GRAND_TRADE:'';}
-function supplierFromRow(headers,row){
-  // Prefer explicit supplier/producer fields; still recognize an explicit GT/Turkey
-  // mention anywhere else in the actual row, as requested, without inventing data.
-  const preferred=['Производитель','Наименование КА','Поставщик','Контрагент','Страна происхождения','Страна'];
-  const order=[...preferred.map(name=>headers.findIndex(h=>text(h)===name)).filter(i=>i>=0),...headers.map((_,i)=>i)];
-  const used=new Set();
-  for(const i of order){if(used.has(i))continue;used.add(i);const value=text(row[i]);if(canonicalSupplier(value))return {supplier:GRAND_TRADE,supplierEvidence:headers[i]+': '+value};}
+const supplierKey=value=>text(value).toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function canonicalSupplier(value){
+  const normalized=supplierKey(value);
+  if(DEFAULT_SUPPLIER_RULES.some(r=>phraseMatch(normalized,supplierKey(r.pattern))))return GRAND_TRADE;
+  return GT_SUPPLIER_RE.test(text(value))?GRAND_TRADE:'';
+}
+function phraseMatch(haystack,needle){return Boolean(needle)&&(haystack===needle||(' '+haystack+' ').includes(' '+needle+' '));}
+function validSupplierRules(rules){
+  if(!Array.isArray(rules))return [];
+  const byKey=new Map();
+  for(const item of rules.slice(0,500)){
+    const pattern=text(item?.pattern),supplier=text(item?.supplier);
+    if(pattern&&supplier&&pattern.length<=250&&supplier.length<=140)byKey.set(supplierKey(pattern),{pattern,supplier});
+  }
+  return [...byKey.values()];
+}
+function effectiveSupplierRules(custom=[]){
+  const map=new Map(DEFAULT_SUPPLIER_RULES.map(r=>[supplierKey(r.pattern),{...r,origin:'встроенное'}]));
+  for(const r of validSupplierRules(custom))map.set(supplierKey(r.pattern),{...r,origin:'изменено на сайте'});
+  return [...map.values()].sort((a,b)=>supplierKey(b.pattern).length-supplierKey(a.pattern).length);
+}
+function supplierFromFields(fields,custom=[]){
+  const ordered=[...fields].sort((a,b)=>Number(b.preferred)-Number(a.preferred));
+  const rules=effectiveSupplierRules(custom);
+  for(const f of ordered){
+    const haystack=supplierKey(f.value);
+    const found=rules.find(r=>phraseMatch(haystack,supplierKey(r.pattern)));
+    if(found)return {supplier:found.supplier,supplierEvidence:`${found.origin} · ${f.label}: ${f.value}`};
+  }
+  for(const f of ordered)if(GT_SUPPLIER_RE.test(text(f.value)))return {supplier:GRAND_TRADE,supplierEvidence:`${f.label}: ${f.value}`};
   return {supplier:'',supplierEvidence:''};
+}
+function supplierFromRow(headers,row,custom=[]){
+  const preferred=['Производитель','Наименование КА','Поставщик','Контрагент','Страна происхождения','Страна'];
+  const fields=headers.map((label,i)=>({label:text(label)||`Столбец ${i+1}`,value:text(row[i]),preferred:preferred.includes(text(label))})).filter(f=>f.value);
+  return {...supplierFromFields(fields,custom),supplierFields:fields};
+}
+function applySupplierEdits(records,custom=[],overrides={}){
+  const safe=overrides&&typeof overrides==='object'?overrides:{};
+  for(const r of records){
+    const calculated=supplierFromFields(r.supplierFields||[],custom);
+    if(Object.prototype.hasOwnProperty.call(safe,r.key)&&typeof safe[r.key]==='string'){
+      r.supplier=text(safe[r.key]);r.supplierEvidence='Изменено вручную для обращения';
+    }else{r.supplier=calculated.supplier;r.supplierEvidence=calculated.supplierEvidence;}
+  }
+  return records;
 }
 function parseTable(table,source='выгрузка'){
   const [headers,...rows]=table;
@@ -46,11 +85,11 @@ function parseTable(table,source='выгрузка'){
     const date=dateISO(val(row,'Дата обращения'));
     if(!date){invalidDate++;continue;}
     const guid=text(val(row,'guid')),id=text(val(row,'id'));
-    const {supplier,supplierEvidence}=supplierFromRow(headers,row);
+    const {supplier,supplierEvidence,supplierFields}=supplierFromRow(headers,row);
     const obj={guid,id,code,name,date,
       characteristic:text(val(row,'Характеристика товара/прихода')),
       manufacturer:text(val(row,'Производитель')),
-      supplier,supplierEvidence,
+      supplier,supplierEvidence,supplierFields,
       storeCode:text(val(row,'Код ТО')),
       store:text(val(row,'Наименование ТО')),
       branch:text(val(row,'Филиал')),
@@ -91,5 +130,5 @@ function aggregate(records,{asOf,threshold=2,query=''}={}){
       grandTrade:selected.filter(r=>r.supplier===GRAND_TRADE).length,
       excludedDate,threshold:thresh}};
 }
-return {REQUIRED,text,dateISO,ruDate,previousDate,canonicalSupplier,supplierFromRow,parseTable,merge,aggregate};
+return {REQUIRED,text,dateISO,ruDate,previousDate,GRAND_TRADE,DEFAULT_SUPPLIER_RULES,supplierKey,effectiveSupplierRules,validSupplierRules,canonicalSupplier,supplierFromRow,applySupplierEdits,parseTable,merge,aggregate};
 });
