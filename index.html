@@ -6,20 +6,20 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
-  <link rel="stylesheet" href="assets/styles.css?v=2.9">
-  <link rel="stylesheet" href="assets/ui-v27.css?v=2.9">
-  <link rel="stylesheet" href="assets/ui-v28.css?v=2.9">
-  <link rel="stylesheet" href="assets/store-claims.css?v=2.9">
-  <script defer src="assets/core.js?v=2.9"></script>
-  <script defer src="assets/etalon.js?v=2.9"></script>
-  <script defer src="assets/norms.js?v=2.9"></script>
-  <script defer src="assets/export.js?v=2.9"></script>
-  <script defer src="assets/report-builder.js?v=2.9"></script>
-  <script defer src="assets/app.js?v=2.9"></script>
-  <script defer src="assets/claims.js?v=2.9"></script>
-  <script defer src="assets/xlsx-lite.js?v=2.9"></script>
-  <script defer src="assets/store-claims-core.js?v=2.9"></script>
-  <script defer src="assets/store-claims.js?v=2.9"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=2.10">
+  <link rel="stylesheet" href="assets/ui-v27.css?v=2.10">
+  <link rel="stylesheet" href="assets/ui-v28.css?v=2.10">
+  <link rel="stylesheet" href="assets/store-claims.css?v=2.10">
+  <script defer src="assets/core.js?v=2.10"></script>
+  <script defer src="assets/etalon.js?v=2.10"></script>
+  <script defer src="assets/norms.js?v=2.10"></script>
+  <script defer src="assets/export.js?v=2.10"></script>
+  <script defer src="assets/report-builder.js?v=2.10"></script>
+  <script defer src="assets/app.js?v=2.10"></script>
+  <script defer src="assets/claims.js?v=2.10"></script>
+  <script defer src="assets/xlsx-lite.js?v=2.10"></script>
+  <script defer src="assets/store-claims-core.js?v=2.10"></script>
+  <script defer src="assets/store-claims.js?v=2.10"></script>
 </head>
 <body>
   <div class="shell">
@@ -40,7 +40,7 @@
     </aside>
     <button id="mobileBackdrop" class="mobile-backdrop" type="button" tabindex="-1" aria-label="Закрыть меню" hidden></button>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.9 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.10 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -168,14 +168,13 @@
           <div class="page-title"><div><h1>Претензии магазинов МАГНИТ</h1><p>Обращения за вчера и сегодня. Массовость по коду товара, характеристике и фактическим обращениям магазинов.</p></div><span class="status-chip">Обработка в браузере</span></div>
           <div class="store-top-grid">
             <div class="panel store-file-panel">
-              <div class="panel-title"><div class="step">1</div><div><h2>Загрузите Excel обращений</h2><p>Загрузите один файл или добавляйте выгрузки по очереди. Повторы по guid не учитываются.</p></div></div>
+              <div class="panel-title"><div class="step">1</div><div><h2>Загрузите Excel обращений</h2><p>Можно загрузить один файл с двумя днями или два файла отдельно. Повторы по guid не учитываются.</p></div></div>
               <label class="file-drop store-upload" for="storeClaimsFiles"><span class="file-picto">XLSX</span><span class="file-details"><strong>Выгрузка претензий магазинов</strong><small>claims_export_...xlsx · один или несколько файлов</small><em id="storeClaimsFileNames">Выберите Excel-файл(ы) для объединения</em></span><span class="file-action">Выбрать</span><input id="storeClaimsFiles" type="file" accept=".xlsx" multiple hidden></label>
-              <button class="text-button store-clear" id="storeClaimsClear" type="button">Очистить загруженные файлы</button>
-              <p class="field-note" id="storeClaimsSourceInfo">Файлы не загружены. Названия столбцов сверяются автоматически с образцом.</p>
+              <p class="field-note" id="storeClaimsSourceInfo">Файлы не загружены. Названия столбцов сверяются автоматически с образцом.</p><button type="button" class="store-clear" id="storeClaimsClear">Очистить загруженные файлы</button>
             </div>
             <div class="panel store-settings-panel">
               <div class="panel-title"><div class="step">2</div><div><h2>Период и порог массовости</h2><p>Два календарных дня: выбранный день и предыдущий.</p></div></div>
-              <div class="store-params"><label class="field">Сегодня / конец периода<input id="storeClaimsDate" type="date"></label><label class="field">Массовость, обращений от<select id="storeClaimsThreshold"><option value="1">1 и более (все)</option><option value="2" selected>2 и более</option><option value="3">3 и более</option><option value="5">5 и более</option><option value="10">10 и более</option></select></label></div>
+              <div class="store-params"><label class="field">Сегодня / конец периода<input id="storeClaimsDate" type="date"></label><label class="field">Массовость, обращений от<select id="storeClaimsThreshold"><option value="2" selected>2 и более</option><option value="3">3 и более</option><option value="5">5 и более</option><option value="10">10 и более</option></select></label></div>
               <div class="store-actions"><button class="primary-button" type="button" id="storeClaimsBuild" disabled>Сформировать массовость <span>→</span></button><button class="secondary-button" id="storeClaimsExport" type="button" disabled>Скачать отчёт Excel ↓</button></div>
               <p class="field-note" id="storeClaimsMessage" role="status" aria-live="polite">Загрузите Excel, чтобы начать анализ.</p>
               <a class="store-download" id="storeClaimsDownloadLink" hidden>Если файл не скачался — нажмите здесь ↓</a>
@@ -186,13 +185,16 @@
             <div class="store-kpis" id="storeClaimsKpis"></div>
             <p class="store-warning" id="storeClaimsWarnings" role="status"></p>
             <div class="panel store-table-panel"><div class="store-panel-heading"><div><h2>Массовость по товарам</h2><p id="storeClaimsTableInfo">Позиции, получившие повторные обращения.</p></div></div>
-              <div class="table-scroll"><table class="data-table store-table"><thead><tr><th>Код товара</th><th>Товар</th><th>Обращений</th><th>Магазинов</th><th>Дата обращения</th><th>Производители</th><th>Кол-во брака</th><th>Детали</th></tr></thead><tbody id="storeClaimsMassRows"></tbody></table></div>
+              <p class="store-scroll-hint">↔ Прокручивайте таблицу влево и вправо. Код товара закреплён; на телефоне кнопка «Обращения» находится справа в конце строки.</p>
+              <div class="table-scroll store-table-scroll" tabindex="0" role="region" aria-label="Массовость по товарам — прокручиваемая таблица"><table class="data-table store-table store-table-mass"><colgroup><col style="width:135px"><col style="width:270px"><col style="width:110px"><col style="width:105px"><col style="width:205px"><col style="width:260px"><col style="width:125px"><col style="width:140px"></colgroup><thead><tr><th>Код товара</th><th>Товар</th><th>Обращений</th><th>Магазинов</th><th>Дата обращения</th><th>Производители</th><th>Кол-во брака</th><th>Детали</th></tr></thead><tbody id="storeClaimsMassRows"></tbody></table></div>
             </div>
             <div class="panel store-table-panel"><div class="store-panel-heading"><div><h2>Критика по характеристике товара</h2><p id="storeClaimsMassSubtitle">Разделение массовых обращений по дефектам товара.</p></div></div>
-              <div class="table-scroll"><table class="data-table store-table"><thead><tr><th>Код товара</th><th>Товар</th><th>Характеристика товара</th><th>Обращений</th><th>Магазинов</th><th>Дата обращения</th><th>Производители</th><th>Кол-во брака</th><th>Детали</th></tr></thead><tbody id="storeClaimsCriticalRows"></tbody></table></div>
+              <p class="store-scroll-hint">↔ Прокрутите таблицу по горизонтали для просмотра всех столбцов.</p>
+              <div class="table-scroll store-table-scroll" tabindex="0" role="region" aria-label="Критика по характеристикам — прокручиваемая таблица"><table class="data-table store-table store-table-critical"><colgroup><col style="width:135px"><col style="width:250px"><col style="width:220px"><col style="width:110px"><col style="width:105px"><col style="width:205px"><col style="width:260px"><col style="width:125px"><col style="width:140px"></colgroup><thead><tr><th>Код товара</th><th>Товар</th><th>Характеристика товара</th><th>Обращений</th><th>Магазинов</th><th>Дата обращения</th><th>Производители</th><th>Кол-во брака</th><th>Детали</th></tr></thead><tbody id="storeClaimsCriticalRows"></tbody></table></div>
             </div>
             <div class="panel store-table-panel" id="storeClaimsDetailPanel" hidden><div class="store-panel-heading"><div><h2 id="storeClaimsDetailTitle">Обращения</h2><p id="storeClaimsDetailMeta">Реальные строки выгрузки</p></div><button class="secondary-button" id="storeClaimsDetailClose" type="button">Закрыть детали</button></div>
-              <div class="table-scroll"><table class="data-table store-table"><thead><tr><th>Дата обращения</th><th>Характеристика</th><th>Производитель</th><th>Код магазина</th><th>Магазин</th><th>Кол-во брака</th><th>Комментарий ТО</th></tr></thead><tbody id="storeClaimsDetailRows"></tbody></table></div>
+              <p class="store-scroll-hint">↔ Подробности можно прокручивать по горизонтали; полные значения показаны без обрезки.</p>
+              <div class="table-scroll store-table-scroll" tabindex="0" role="region" aria-label="Подробности обращений — прокручиваемая таблица"><table class="data-table store-table store-table-detail"><colgroup><col style="width:155px"><col style="width:170px"><col style="width:270px"><col style="width:145px"><col style="width:250px"><col style="width:125px"><col style="width:340px"></colgroup><thead><tr><th>Дата обращения</th><th>Характеристика</th><th>Производитель</th><th>Код магазина</th><th>Магазин</th><th>Кол-во брака</th><th>Комментарий ТО</th></tr></thead><tbody id="storeClaimsDetailRows"></tbody></table></div>
             </div>
           </div>
           <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Правило массовости:</strong> одно подтверждённое обращение = одна запись с уникальным guid. Массовые товары — от выбранного количества обращений. Критика группируется по сочетанию кода товара и характеристики. Производитель и дата сохраняются из Excel без подстановки; данные за другие даты не включаются.</p></div>

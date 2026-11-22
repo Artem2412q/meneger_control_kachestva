@@ -40,3 +40,87 @@
 @media(max-width:650px){.store-params{grid-template-columns:1fr}.store-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.store-table-panel{padding:15px 13px}.store-actions>*{flex:1}.store-result-head h2{font-size:18px}}
 
 .store-clear{display:block;padding:6px 0 10px;font-size:11px;color:#a42a35;text-decoration:underline;text-underline-offset:3px}
+
+
+/* v2.10 — stable zoom/responsive tables, prevents text from intruding into adjacent cells. */
+#view-storeclaims .store-table-scroll {
+  width:100%; max-width:100%; min-width:0;
+  overflow-x:auto; overflow-y:auto;
+  overscroll-behavior-inline:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable;
+  isolation:isolate;
+}
+#view-storeclaims .store-table-scroll:focus-visible {outline:2px solid #b56a73;outline-offset:2px}
+#view-storeclaims .store-table {
+  display:table;
+  table-layout:fixed;
+  border-collapse:separate;
+  border-spacing:0;
+  min-width:0;
+  white-space:normal;
+}
+#view-storeclaims .store-table-mass {width:1350px}
+#view-storeclaims .store-table-critical {width:1550px}
+#view-storeclaims .store-table-detail {width:1455px}
+#view-storeclaims .store-table th,
+#view-storeclaims .store-table td {
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  max-width:none;
+  min-width:0;
+  vertical-align:middle;
+  line-height:1.45;
+}
+#view-storeclaims .store-table td.store-name{min-width:0}
+#view-storeclaims .store-table td.store-number,
+#view-storeclaims .store-table td.store-code {white-space:nowrap}
+#view-storeclaims .store-table td.store-code {overflow:hidden;text-overflow:ellipsis}
+#view-storeclaims .store-table-mass th:first-child,
+#view-storeclaims .store-table-critical th:first-child,
+#view-storeclaims .store-table-detail th:first-child {
+  position:sticky;left:0;z-index:5;
+}
+#view-storeclaims .store-table-mass td:first-child,
+#view-storeclaims .store-table-critical td:first-child,
+#view-storeclaims .store-table-detail td:first-child {
+  position:sticky;left:0;z-index:3;background:#edf5fc;
+  box-shadow:5px 0 10px -11px #24354f;
+}
+#view-storeclaims .store-table-mass th:last-child,
+#view-storeclaims .store-table-critical th:last-child {
+  position:sticky;right:0;z-index:5;
+  box-shadow:-7px 0 12px -13px #24354f;
+}
+#view-storeclaims .store-table-mass td:last-child:not(.store-empty),
+#view-storeclaims .store-table-critical td:last-child:not(.store-empty) {
+  position:sticky;right:0;z-index:3;
+  background:#fff;
+  box-shadow:-7px 0 12px -13px #24354f;
+  white-space:nowrap;
+  text-align:center;
+}
+#view-storeclaims .store-table-mass tbody tr:nth-child(even) td:last-child,
+#view-storeclaims .store-table-critical tbody tr:nth-child(even) td:last-child {background:#fafcff}
+#view-storeclaims .store-table-mass tbody tr:hover td:last-child,
+#view-storeclaims .store-table-critical tbody tr:hover td:last-child {background:#fff6f7}
+#view-storeclaims .store-detail-button {max-width:100%;font-size:11px;padding:8px 9px}
+#view-storeclaims .store-scroll-hint {margin:0 0 9px;color:#697587;font-size:11px;line-height:1.5}
+@media(min-width:1500px){
+  #view-storeclaims .store-scroll-hint {font-size:10.5px}
+}
+@media(max-width:650px){
+  #view-storeclaims .store-scroll-hint{font-size:11px}
+  #view-storeclaims .store-table td,#view-storeclaims .store-table th {padding:10px 11px}
+}
+@media(max-width:650px){
+  /* Keep enough readable space for the product name on narrow phones. */
+  #view-storeclaims .store-table-mass th:last-child,
+  #view-storeclaims .store-table-critical th:last-child,
+  #view-storeclaims .store-table-mass td:last-child:not(.store-empty),
+  #view-storeclaims .store-table-critical td:last-child:not(.store-empty){
+    position:static;
+    box-shadow:none;
+  }
+}
