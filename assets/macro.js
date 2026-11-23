@@ -1,4 +1,4 @@
-/* MAGNIT RC — 2.15: two original user templates, editable total and priority pallet counts. */
+/* MAGNIT RC — 2.17: fresh FROV with greens; original two XLSX templates unchanged. */
 (function(){
 'use strict';
 const $=id=>document.getElementById(id), macro=window.MagnitPalletMacro;
@@ -96,7 +96,7 @@ function prepareDefs(which,r){
    ['Приоритетный код',r.productCode||'Не задан'],
    ['Кодовые позиции в выборке',r.uniqueCodes],
    ['Палет из файла',r.sourcePallets],
-   ['Подходящих свежих овощей/фруктов',r.recent.length+r.older.length+r.unknown.length],
+   ['Подходящих палет ФРЕШ/ФРОВ',r.recent.length+r.older.length+r.unknown.length],
    ['После фильтра поставщика',r.eligibleCount],
    ['Отобрано палет',r.selected.length],
    ['Приоритетный код (палет)',`${r.priorityCount} из ${r.priorityRequested}`],
