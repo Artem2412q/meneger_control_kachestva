@@ -6,23 +6,25 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Локальная автоматизация Excel-отчётов распределительного центра МАГНИТ.">
   <title>МАГНИТ РЦ — центр отчётности</title>
-  <link rel="stylesheet" href="assets/styles.css?v=2.15">
-  <link rel="stylesheet" href="assets/ui-v27.css?v=2.15">
-  <link rel="stylesheet" href="assets/ui-v28.css?v=2.15">
-  <link rel="stylesheet" href="assets/store-claims.css?v=2.15">
-  <link rel="stylesheet" href="assets/macro.css?v=2.15">
-  <script defer src="assets/core.js?v=2.15"></script>
-  <script defer src="assets/etalon.js?v=2.15"></script>
-  <script defer src="assets/norms.js?v=2.15"></script>
-  <script defer src="assets/export.js?v=2.15"></script>
-  <script defer src="assets/report-builder.js?v=2.15"></script>
-  <script defer src="assets/app.js?v=2.15"></script>
-  <script defer src="assets/claims.js?v=2.15"></script>
-  <script defer src="assets/xlsx-lite.js?v=2.15"></script>
-  <script defer src="assets/store-claims-core.js?v=2.15"></script>
-  <script defer src="assets/store-claims.js?v=2.15"></script>
-  <script defer src="assets/macro-core.js?v=2.15"></script>
-  <script defer src="assets/macro.js?v=2.15"></script>
+  <link rel="stylesheet" href="assets/styles.css?v=2.16">
+  <link rel="stylesheet" href="assets/ui-v27.css?v=2.16">
+  <link rel="stylesheet" href="assets/ui-v28.css?v=2.16">
+  <link rel="stylesheet" href="assets/store-claims.css?v=2.16">
+  <link rel="stylesheet" href="assets/macro.css?v=2.16">
+  <script defer src="assets/core.js?v=2.16"></script>
+  <script defer src="assets/etalon.js?v=2.16"></script>
+  <script defer src="assets/norms.js?v=2.16"></script>
+  <script defer src="assets/export.js?v=2.16"></script>
+  <script defer src="assets/report-builder.js?v=2.16"></script>
+  <script defer src="assets/app.js?v=2.16"></script>
+  <script defer src="assets/claims.js?v=2.16"></script>
+  <script defer src="assets/xlsx-lite.js?v=2.16"></script>
+  <script defer src="assets/store-claims-core.js?v=2.16"></script>
+  <script defer src="assets/store-claims.js?v=2.16"></script>
+  <script defer src="assets/macro-core.js?v=2.16"></script>
+  <script defer src="assets/macro.js?v=2.16"></script>
+  <link rel="stylesheet" href="assets/act.css?v=2.16">
+  <script defer src="assets/act.js?v=2.16"></script>
 </head>
 <body>
   <div class="shell">
@@ -37,6 +39,7 @@
         <button class="nav-button" data-tab="macro"><span class="nav-glyph">▥</span> Макрос палет</button>
         <button class="nav-button" data-tab="returns"><span class="nav-glyph">⇄</span> Возвраты ГТ</button>
         <button class="nav-button" data-tab="claims"><span class="nav-glyph">▧</span> Претензии Гранд-Трейд</button>
+        <button class="nav-button" data-tab="act"><span class="nav-glyph">▣</span> АКТ комиссионной приёмки</button>
         <button class="nav-button" data-tab="storeclaims"><span class="nav-glyph">▤</span> Претензии магазинов</button>
         <button class="nav-button" data-tab="rules"><span class="nav-glyph">⌘</span> Правила и справка</button>
       </nav>
@@ -44,7 +47,7 @@
     </aside>
     <button id="mobileBackdrop" class="mobile-backdrop" type="button" tabindex="-1" aria-label="Закрыть меню" hidden></button>
     <div class="workspace">
-      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.15 <span class="topbar-divider">/</span> GitHub Pages</span></header>
+      <header class="topbar"><div class="topbar-context"><span class="context-dot">●</span><span>Операционный центр</span><span class="context-sep">/</span><strong>Рабочее пространство</strong></div><button class="mobile-brand" id="mobileMenu" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNavigation">☰ <strong>МАГНИТ РЦ</strong></button><span class="topbar-right"><span class="live-dot"></span> Версия 2.16 <span class="topbar-divider">/</span> GitHub Pages</span></header>
       <main class="main">
         <section class="view active" id="view-home">
           <div class="eyebrow">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div>
@@ -62,6 +65,7 @@
           <div class="feature-grid feature-grid-secondary">
             <button class="feature-card critical-home" data-go="critical"><div class="feature-icon gt-icon">!</div><h3>Критика сегодня</h3><p>Отдельные две Excel-выгрузки за сегодняшний день. Отчёт и «Критика» могут иметь разные даты.</p><div class="feature-footer"><span class="tag neutral">Сегодня / сегодня</span><span class="arrow">↗</span></div></button>
             <button class="feature-card" data-go="claims"><div class="feature-icon claim-icon">▧</div><h3>Претензии Гранд-Трейд</h3><p>Заполните данные машины, заказа и товаров. Получите готовый текст претензии для копирования.</p><div class="feature-footer"><span class="tag neutral">Конструктор текста</span><span class="arrow">↗</span></div></button>
+            <button class="feature-card" data-go="act"><div class="feature-icon claim-icon">▣</div><h3>Акт комиссионной приёмки</h3><p>Заполните форму, проверьте лист А4 и скачайте документ для подписания комиссией.</p><div class="feature-footer"><span class="tag neutral">Печатный акт А4</span><span class="arrow">↗</span></div></button>
             <button class="feature-card" data-go="storeclaims"><div class="feature-icon stock-icon">▤</div><h3>Претензии магазинов МАГНИТ</h3><p>Excel за вчера и сегодня, массовость по товарам и характеристикам, производители и критика обращений.</p><div class="feature-footer"><span class="tag neutral">Массовость</span><span class="arrow">↗</span></div></button>
             <button class="feature-card" data-go="macro"><div class="feature-icon stock-icon">▥</div><h3>Макрос палет</h3><p>Две выборки по 1,5%: новые и давно хранящиеся палеты, полный накопительный список буферов.</p><div class="feature-footer"><span class="tag neutral">Выборка палет</span><span class="arrow">↗</span></div></button>
           </div>
@@ -264,6 +268,79 @@
             <div class="macro-export-footer"><span id="macroAuditInfo">—</span><span class="macro-download-links"><a id="macroDownloadLink" class="macro-download" hidden>Повторно скачать таблицу №1 ↓</a><a id="macroRequestDownloadLink" class="macro-download" hidden>Повторно скачать таблицу №2 ↓</a></span></div>
           </div>
           <div class="info-row"><div class="info-symbol">ⓘ</div><p><strong>Важно:</strong> это автоматическая выборка в браузере, не VBA-макрос. Оба Excel создаются по предоставленным образцам. Пустые колонки результата и унифицированного комментария заполняются менеджером только после осмотра. Накопительный «Лист1» содержит все реальные буферы из загруженных файлов.</p></div>
+        </section>
+
+
+        <section class="view" id="view-act">
+          <div class="eyebrow">ДОКУМЕНТООБОРОТ / КОМИССИОННАЯ ПРИЁМКА</div>
+          <div class="page-title act-page-heading"><div><h1>Акт комиссионной приёмки</h1><p>Заполните сведения слева. Справа — печатный бланк формата А4, обновляющийся автоматически.</p></div><span class="act-label-a4">A4 · 210 × 297 мм</span></div>
+          <div class="act-grid">
+            <div class="act-editor panel">
+              <div class="act-section-heading"><span>01</span><div><h2>Реквизиты и составитель</h2><p>Все поля заполняются вручную. Пустые значения останутся пустыми в документе.</p></div></div>
+              <div class="act-fields">
+                <label class="field act-span">Адрес распределительного центра<textarea id="actAddress" rows="3">385225, Республика Адыгея, Теучежский район, хутор Кочкин, ул. Логистическая, д. 1</textarea></label>
+                <label class="field">Должность составителя<input id="actAuthorRole" type="text" maxlength="100" placeholder="Например, МОКК"></label>
+                <label class="field">Кто составил акт (ФИО)<input id="actAuthorName" type="text" maxlength="110" placeholder="Фамилия И. О."></label>
+                <label class="field">Номер заявки<input id="actRequest" type="text" maxlength="100" placeholder="Номер из заявки"></label>
+                <label class="field">Номер заказа<input id="actOrder" type="text" maxlength="100" placeholder="Номер из заказа"></label>
+              </div>
+              <div class="act-section-heading"><span>02</span><div><h2>Товар и результаты приёмки</h2><p>Вписывайте только фактически выявленные дефекты и проценты.</p></div></div>
+              <div class="act-fields">
+                <label class="field act-span">Наименование товарной позиции<input id="actProduct" type="text" maxlength="320" placeholder="Точное название из документов"></label>
+                <label class="field act-span">Код товарной позиции<input id="actProductCode" type="text" inputmode="numeric" maxlength="30" placeholder="Код товара"></label>
+                <label class="field act-span">Описание характера брака<textarea id="actDefect" rows="2" maxlength="650" placeholder="Описание фактически выявленного брака"></textarea></label>
+                <label class="field">Брак, %<input id="actDefectPct" type="number" min="0" max="100" step="0.01" placeholder="0,00"></label><span class="act-field-hint">От 0 до 100%</span>
+                <label class="field act-span">Описание характера нестандарта<textarea id="actNonstandard" rows="2" maxlength="650" placeholder="Описание фактически выявленного нестандарта"></textarea></label>
+                <label class="field">Нестандарт, %<input id="actNonstandardPct" type="number" min="0" max="100" step="0.01" placeholder="0,00"></label><span class="act-field-hint">От 0 до 100%</span>
+                <label class="field act-span">Другое — калибр / осыпь<textarea id="actOther" rows="2" maxlength="420" placeholder="Например, отклонение по калибру"></textarea></label>
+                <label class="field">Другое, %<input id="actOtherPct" type="number" min="0" max="100" step="0.01" placeholder="0,00"></label><span class="act-field-hint">От 0 до 100%</span>
+              </div>
+              <div class="act-section-heading"><span>03</span><div><h2>Комиссия и даты</h2><p>Подписи оставлены пустыми для проставления от руки.</p></div></div>
+              <div class="act-fields">
+                <label class="field act-span">МОКК — расшифровка подписи<input id="actMokk" type="text" maxlength="120" placeholder="Фамилия И. О."></label>
+                <label class="field act-span">СМОКК — расшифровка подписи<input id="actSmokk" type="text" maxlength="120" placeholder="Фамилия И. О."></label>
+                <label class="field act-span">НОКК — расшифровка подписи<input id="actNokk" type="text" maxlength="120" placeholder="Фамилия И. О."></label>
+                <label class="field">Дата составления акта<input id="actCreated" type="date"></label>
+                <label class="field">Дата проведения приёмки<input id="actInspected" type="date"></label>
+              </div>
+              <div class="act-buttons">
+                <button class="primary-button" id="actDownload" type="button">Скачать акт Word (.docx) ↓</button>
+                <button class="secondary-button" id="actPrint" type="button">Печать / сохранить PDF ↗</button>
+                <button class="secondary-button" id="actReset" type="button">Очистить поля</button>
+              </div>
+              <p class="act-status" id="actStatus" role="status" aria-live="polite">Акт готов к заполнению. Формат страницы при печати — А4.</p>
+              <a id="actBackupDownload" class="act-retry" hidden>Если скачивание не началось — нажмите для повторной загрузки ↓</a>
+              <div class="act-note">Документ создаётся на вашем устройстве. Сайт не передаёт сведения об акте на сервер. Сведения о составителе и подписях вводите только после подтверждения.</div>
+            </div>
+            <div class="act-preview" id="actPreviewWrap">
+              <div class="act-preview-head"><span><span class="act-preview-dot"></span> Предпросмотр документа</span><small>Лист А4 · без элементов сайта при печати</small></div>
+              <div class="act-paper" id="actPaper">
+                <div class="act-paper-header">
+                  <div class="act-paper-org"><img src="assets/magnit-logo.png" class="act-logo" alt="Магнит"><div class="act-org-label">РАСПРЕДЕЛИТЕЛЬНЫЙ ЦЕНТР</div><div class="act-org-address" data-act="address"></div></div>
+                  <div class="act-paper-author"><div class="act-mini-title">СОСТАВИЛ АКТ</div><div class="act-author-name" data-act="authorName"></div><div class="act-author-role" data-act="authorRole"></div><div class="act-author-line">подпись __________________</div></div>
+                </div>
+                <div class="act-paper-title"><h2>АКТ КОМИССИОННОЙ ПРИЁМКИ</h2><p>совместно с департаментом дистанционного контроля качества поставок</p></div>
+                <div class="act-paper-fields">
+                  <div class="act-print-row"><span>Номер заявки</span><div data-act="request"></div></div>
+                  <div class="act-print-row"><span>Номер заказа</span><div data-act="order"></div></div>
+                  <div class="act-print-row"><span>Наименование товарной позиции</span><div data-act="product"></div></div>
+                  <div class="act-print-row"><span>Код товарной позиции</span><div data-act="productCode"></div></div>
+                  <div class="act-paper-defect"><div class="act-defect-title">Описание характера брака</div><div class="act-defect-content"><div data-act="defect"></div><span>Брак, %</span><b data-act="defectPct"></b></div></div>
+                  <div class="act-paper-defect"><div class="act-defect-title">Описание характера нестандарта</div><div class="act-defect-content"><div data-act="nonstandard"></div><span>Нестандарт, %</span><b data-act="nonstandardPct"></b></div></div>
+                  <div class="act-paper-defect act-other-defect"><div class="act-defect-title">Другое — калибр / осыпь</div><div class="act-defect-content"><div data-act="other"></div><span>Другое, %</span><b data-act="otherPct"></b></div></div>
+                </div>
+                <div class="act-paper-bottom">
+                  <h3>Комиссия в составе:</h3>
+                  <div class="act-signature-grid act-signature-heading"><span>Должность</span><span>Подпись</span><span>Расшифровка подписи</span></div>
+                  <div class="act-signature-grid"><strong>МОКК</strong><span class="act-signature-line"></span><span class="act-signature-name" data-act="mokk"></span></div>
+                  <div class="act-signature-grid"><strong>СМОКК</strong><span class="act-signature-line"></span><span class="act-signature-name" data-act="smokk"></span></div>
+                  <div class="act-signature-grid"><strong>НОКК</strong><span class="act-signature-line"></span><span class="act-signature-name" data-act="nokk"></span></div>
+                  <div class="act-paper-dates"><div><span>Дата составления акта</span><strong data-act="created"></strong></div><div><span>Дата проведения комиссионной приёмки</span><strong data-act="inspected"></strong></div></div>
+                </div>
+              </div>
+              <div class="act-preview-footer">Предпросмотр предназначен для проверки полей. Документ для скачивания оформлен под A4.</div>
+            </div>
+          </div>
         </section>
 
         <section class="view" id="view-rules"><div class="eyebrow">ЛОГИКА РАСЧЁТОВ</div><div class="page-title"><div><h1>Правила и контроль качества</h1><p>Зафиксированные преобразования по изученному образцу за ноябрь 2026 года.</p></div></div>
